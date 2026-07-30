@@ -15,6 +15,11 @@ services:
       - ./backend/db/schema.sql:/docker-entrypoint-initdb.d/schema.sql
     ports:
       - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U queen_user -d queen_promotoras"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   # Backend + Frontend (App principal)
   app:
@@ -24,7 +29,8 @@ services:
     container_name: queen_app
     restart: always
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     environment:
       PORT: 3001
       DB_HOST: postgres
