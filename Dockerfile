@@ -5,7 +5,7 @@ FROM node:20-alpine AS frontend-builder
 WORKDIR /app/frontend
 
 COPY frontend/package*.json ./
-RUN npm ci
+RUN npm install
 
 COPY frontend/ ./
 RUN npm run build
@@ -16,15 +16,14 @@ WORKDIR /app
 
 # Instalar dependencias backend
 COPY backend/package*.json ./backend/
-RUN cd backend && npm ci --omit=dev
+RUN cd backend && npm install --omit=dev
 
 # Copiar código backend
 COPY backend/ ./backend/
 
-# Copiar el build estático del frontend al backend para servirlo si se desea o para que Nginx/Dokploy lo exponga
+# Copiar el build estático del frontend al backend
 COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
 
-# Exponer el puerto del backend
 EXPOSE 3001
 
 ENV NODE_ENV=production
