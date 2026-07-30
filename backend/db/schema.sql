@@ -1,8 +1,5 @@
 -- Queen Promotoras — Schema SQL
--- Ejecutar en PostgreSQL como usuario con permisos
-
-CREATE DATABASE queen_promotoras;
-\c queen_promotoras;
+-- Se ejecuta automáticamente en la BD inicializada por Docker/PostgreSQL
 
 -- Usuarios del sistema
 CREATE TABLE usuarios (
