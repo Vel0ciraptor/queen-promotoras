@@ -65,4 +65,9 @@ app.get('*', (req, res) => {
   }
 });
 
-app.listen(PORT, () => console.log(`🌸 Queen Promotoras API corriendo en http://localhost:${PORT}`));
+import { runMigrations } from './db/initDb.js';
+
+app.listen(PORT, async () => {
+  console.log(`🌸 Queen Promotoras API corriendo en http://localhost:${PORT}`);
+  await runMigrations();
+});
