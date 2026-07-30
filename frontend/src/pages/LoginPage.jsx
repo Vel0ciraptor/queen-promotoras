@@ -20,7 +20,10 @@ export default function LoginPage() {
       if (data.user.rol === 'admin') navigate('/admin');
       else navigate('/promotora');
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Error al iniciar sesión');
+      const msg = err.response?.data?.details 
+        ? `${err.response.data.error}: ${err.response.data.details}`
+        : (err.response?.data?.error || 'Error al iniciar sesión');
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
