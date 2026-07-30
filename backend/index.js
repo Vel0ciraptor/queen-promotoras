@@ -23,4 +23,18 @@ app.use('/api/dashboard', dashboardRoutes);
 
 app.get('/api/health', (req, res) => res.json({ ok: true, time: new Date().toISOString() }));
 
+// Servir frontend compilado en producción (Dokploy / Single Container)
+import path from 'path';
+import { fileURLToPath } from 'url';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const distPath = path.join(__dirname, '../frontend/dist');
+
+app.use(express.static(distPath));
+app.get('*', (req, res) => {
+  if (!req.path.startsWith('/api')) {
+    res.sendFile(path.join(distPath, 'index.html'));
+  }
+});
+
 app.listen(PORT, () => console.log(`🌸 Queen Promotoras API corriendo en http://localhost:${PORT}`));

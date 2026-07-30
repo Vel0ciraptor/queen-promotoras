@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  # Base de datos PostgreSQL
+  postgres:
+    image: postgres:16-alpine
+    container_name: queen_postgres
+    restart: always
+    environment:
+      POSTGRES_DB: queen_promotoras
+      POSTGRES_USER: queen_user
+      POSTGRES_PASSWORD: queen_secure_password_123
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/db/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    ports:
+      - "5432:5432"
+
+  # Backend + Frontend (App principal)
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: queen_app
+    restart: always
+    depends_on:
+      - postgres
+    environment:
+      PORT: 3001
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: queen_promotoras
+      DB_USER: queen_user
+      DB_PASSWORD: queen_secure_password_123
+      JWT_SECRET: queen_style_secret_jwt_key_2026_super_secure
+    ports:
+      - "3001:3001"
+
+volumes:
+  postgres_data:
