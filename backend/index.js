@@ -69,5 +69,6 @@ import { runMigrations } from './db/initDb.js';
 
 app.listen(PORT, async () => {
   console.log(`🌸 Queen Promotoras API corriendo en http://localhost:${PORT}`);
+  console.log(`📌 DB_HOST=${process.env.DB_HOST || 'NO DEFINIDO'} DB_NAME=${process.env.DB_NAME || 'NO DEFINIDO'} DB_USER=${process.env.DB_USER || 'NO DEFINIDO'}`);
   await runMigrations();
 });
