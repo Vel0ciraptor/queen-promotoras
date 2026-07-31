@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import api from '../lib/api';
+import queenLogo from '../assets/copiaqueenlogo.jpg';
 
 export default function LoginPage() {
   const [form, setForm] = useState({ usuario: '', password: '' });
@@ -34,14 +35,14 @@ export default function LoginPage() {
       <div className="login-card">
         {/* Logo / Brand */}
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-          <div style={{
-            width: 72, height: 72, borderRadius: '50%', margin: '0 auto 1rem',
-            background: 'linear-gradient(135deg, #FF3D8F, #e0007b)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: '2rem', boxShadow: '0 8px 24px rgba(255,61,143,0.5)'
-          }}>
-            👑
-          </div>
+          <img
+            src={queenLogo}
+            alt="Queen Style Logo"
+            style={{
+              width: 90, height: 90, borderRadius: '50%', margin: '0 auto 1rem',
+              objectFit: 'cover', boxShadow: '0 8px 24px rgba(255,61,143,0.5)'
+            }}
+          />
           <h1 style={{ color: 'var(--pink-strong)', fontSize: '1.75rem', fontWeight: 900 }}>Queen Style</h1>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginTop: '0.25rem' }}>
             Sistema de fidelización

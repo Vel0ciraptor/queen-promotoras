@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import {
-  LayoutDashboard, Users, UserPlus, Tag, Settings, LogOut, Moon, Sun, Crown, Menu, X
+  LayoutDashboard, Users, UserPlus, Tag, Settings, LogOut, Moon, Sun, Menu, X
 } from 'lucide-react';
+import queenLogo from '../assets/copiaqueenlogo.jpg';
 
 import AdminDashboard from './admin/AdminDashboard';
 import AdminClientes from './admin/AdminClientes';
@@ -39,7 +40,7 @@ export default function AdminPage() {
     <>
       {/* Logo */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0 0.5rem', marginBottom: '2rem' }}>
-        <Crown size={22} style={{ color: 'var(--pink-strong)', flexShrink: 0 }} />
+        <img src={queenLogo} alt="Queen Style" style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
         <div>
           <div style={{ fontWeight: 900, fontSize: '1rem', color: 'var(--pink-strong)' }}>Queen Style</div>
           <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Panel Admin</div>
@@ -106,7 +107,7 @@ export default function AdminPage() {
             <Menu size={22}/>
           </button>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--pink-strong)', fontWeight: 900 }}>
-            <Crown size={18}/> Queen Style
+            <img src={queenLogo} alt="Queen Style" style={{ width: 22, height: 22, borderRadius: '50%', objectFit: 'cover' }}/> Queen Style
           </div>
           <button onClick={toggle} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>
             {theme === 'dark' ? <Sun size={18}/> : <Moon size={18}/>}

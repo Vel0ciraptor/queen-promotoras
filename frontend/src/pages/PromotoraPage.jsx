@@ -6,7 +6,8 @@ import api from '../lib/api';
 import ClientCard from '../components/ClientCard';
 import NuevoClienteModal from '../components/NuevoClienteModal';
 import ClienteDetalleModal from '../components/ClienteDetalleModal';
-import { Search, Plus, LogOut, Moon, Sun, Crown } from 'lucide-react';
+import { Search, Plus, LogOut, Moon, Sun } from 'lucide-react';
+import queenLogo from '../assets/copiaqueenlogo.jpg';
 
 const LIMIT = 7;
 const CHIME_SRC = '/chime.mp3';
@@ -94,7 +95,7 @@ export default function PromotoraPage() {
       {/* Header */}
       <header className="app-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-          <Crown size={22} style={{ color: 'var(--gold)' }} />
+          <img src={queenLogo} alt="Queen Style" style={{ width: 26, height: 26, borderRadius: '50%', objectFit: 'cover' }} />
           <span style={{ fontWeight: 900, fontSize: '1.15rem', letterSpacing: '-0.01em' }}>Queen Style</span>
         </div>
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
