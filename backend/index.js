@@ -38,7 +38,7 @@ const authLimiter = rateLimit({
 });
 
 app.use(cors({ origin: process.env.FRONTEND_URL || '*', credentials: true }));
-app.use(express.json({ limit: '10kb' })); // Previene payload demasiado grande (DoS)
+app.use(express.json({ limit: '1mb' })); // Previene payload demasiado grande (DoS)
 
 app.use('/api/auth/login', authLimiter);
 app.use('/api', apiLimiter);

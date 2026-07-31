@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Search, Edit2, Plus, X } from 'lucide-react';
+import { Search, Edit2, Upload, X } from 'lucide-react';
 import api from '../../lib/api';
 import { useToast } from '../../context/ToastContext';
+import ImportarExcelModal from '../../components/ImportarExcelModal';
 
 const fmt = n => new Intl.NumberFormat('es-BO', { style: 'currency', currency: 'BOB', minimumFractionDigits: 0 }).format(n || 0);
 const fmtDate = d => new Date(d).toLocaleDateString('es-BO', { day: '2-digit', month: 'short', year: 'numeric' });
@@ -81,6 +82,7 @@ export default function AdminClientes() {
   const [q, setQ] = useState('');
   const [loading, setLoading] = useState(true);
   const [editando, setEditando] = useState(null);
+  const [showImport, setShowImport] = useState(false);
 
   const fetch = useCallback(async (query, pg) => {
     setLoading(true);
@@ -106,10 +108,26 @@ export default function AdminClientes() {
     setEditando(null);
   };
 
+  const handleImportado = () => {
+    setShowImport(false);
+    setPage(1);
+    fetch(q, 1);
+  };
+
   return (
     <div className="gap-stack" style={{ gap: '1.25rem' }}>
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:'0.75rem' }}>
-        <h1 style={{ fontSize:'1.5rem', fontWeight:900 }}>Clientas 👥</h1>
+        <div style={{ display:'flex', alignItems:'center', gap:'0.75rem' }}>
+          <h1 style={{ fontSize:'1.5rem', fontWeight:900 }}>Clientas 👥</h1>
+          <button
+            id="btn-importar-excel"
+            className="btn btn-ghost"
+            onClick={() => setShowImport(true)}
+            style={{ fontSize:'0.8rem', display:'flex', alignItems:'center', gap:'0.35rem', padding:'0.4rem 0.75rem', border:'1px solid var(--border)', borderRadius:'0.5rem' }}
+          >
+            <Upload size={14} /> Importar Excel
+          </button>
+        </div>
         <span style={{ color:'var(--text-muted)', fontSize:'0.85rem' }}>{total} registradas</span>
       </div>
 
@@ -175,6 +193,10 @@ export default function AdminClientes() {
 
       {editando && (
         <EditarClienteModal cliente={editando} onClose={() => setEditando(null)} onGuardado={handleGuardado} />
+      )}
+
+      {showImport && (
+        <ImportarExcelModal onClose={() => setShowImport(false)} onImportado={handleImportado} />
       )}
     </div>
   );

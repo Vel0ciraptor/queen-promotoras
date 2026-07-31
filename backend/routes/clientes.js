@@ -65,6 +65,74 @@ router.get('/:id', async (req, res) => {
   }
 });
 
+// POST /api/clientes/import — importar clientes desde Excel (batch)
+router.post('/import', requireRol('admin'), async (req, res) => {
+  const { clientes } = req.body;
+  if (!Array.isArray(clientes) || clientes.length === 0) {
+    return res.status(400).json({ error: 'Se requiere un array de clientes' });
+  }
+
+  const client = await pool.connect();
+  const resultados = { importadas: 0, errores: [] };
+
+  try {
+    await client.query('BEGIN');
+
+    for (let i = 0; i < clientes.length; i++) {
+      const row = clientes[i];
+      const nombre = (row.Nombre || row.nombre || '').trim();
+      if (!nombre) {
+        resultados.errores.push({ fila: i + 1, error: 'Nombre vacío' });
+        continue;
+      }
+
+      const telefono = (row.Telefono || row.telefono || row.Celular || row.celular || '').trim() || null;
+      const ci = (row['C.I'] || row.ci || row.CI || '').trim() || null;
+      const montoCompra = parseFloat(row['MONTO DE COMPRA'] || row.monto || 0) || 0;
+      const vecesCompradas = parseInt(row['VECES COMPRADAS'] || row.visitas || 0) || 0;
+      const fechaRegistro = (row['FECHA DE REGISTRO'] || row.fecha || '').trim() || null;
+
+      let fechaISO = null;
+      if (fechaRegistro) {
+        const d = new Date(fechaRegistro);
+        if (!isNaN(d.getTime())) fechaISO = d.toISOString();
+      }
+
+      try {
+        const { rows } = await client.query(
+          `INSERT INTO clientes (nombre_completo, carnet_identidad, celular, monto_acumulado, visitas_totales, fecha_registro, creado_por)
+           VALUES ($1, $2, $3, $4, $5, COALESCE($6, NOW()), $7) RETURNING *`,
+          [nombre, ci, telefono, montoCompra, vecesCompradas, fechaISO, req.user.id]
+        );
+
+        const cliente = rows[0];
+
+        if (montoCompra > 0) {
+          await client.query(
+            `INSERT INTO historial_ingresos (cliente_id, monto, registrado_por, fecha)
+             VALUES ($1, $2, $3, COALESCE($4, NOW()))`,
+            [cliente.id, montoCompra, req.user.id, fechaISO]
+          );
+        }
+
+        await verificarDescuentos(client, cliente, montoCompra);
+        resultados.importadas++;
+      } catch (err) {
+        resultados.errores.push({ fila: i + 1, error: err.message });
+      }
+    }
+
+    await client.query('COMMIT');
+    res.json(resultados);
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error(err);
+    res.status(500).json({ error: 'Error del servidor durante la importación' });
+  } finally {
+    client.release();
+  }
+});
+
 // POST /api/clientes
 router.post('/', async (req, res) => {
   const { nombre_completo, carnet_identidad, celular, monto_inicial = 0 } = req.body;
