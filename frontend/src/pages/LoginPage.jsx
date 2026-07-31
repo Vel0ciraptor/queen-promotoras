@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import api from '../lib/api';
-import queenLogo from '../assets/copiaqueenlogo.jpg';
+import queenLogo from '../assets/copiaqueenlogo.png';
 
 export default function LoginPage() {
   const [form, setForm] = useState({ usuario: '', password: '' });

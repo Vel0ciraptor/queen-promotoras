@@ -4,7 +4,7 @@ import { useTheme } from '../context/ThemeContext';
 import {
   LayoutDashboard, Users, UserPlus, Tag, Settings, LogOut, Moon, Sun, Menu, X
 } from 'lucide-react';
-import queenLogo from '../assets/copiaqueenlogo.jpg';
+import queenLogo from '../assets/copiaqueenlogo.png';
 
 import AdminDashboard from './admin/AdminDashboard';
 import AdminClientes from './admin/AdminClientes';
