@@ -337,8 +337,15 @@ tbody tr:hover { background: var(--surface2); }
 /* ── Login page ─────────────────────────────────────────────── */
 .login-bg {
   min-height: 100dvh;
-  background: linear-gradient(135deg, #FF3D8F 0%, #e0007b 40%, #FF6FA5 100%);
+  background: linear-gradient(-45deg, #FF3D8F, #e0007b, #FF6FA5, #c4006a, #ff5c9e, #d40074);
+  background-size: 400% 400%;
+  animation: gradientShift 12s ease infinite;
   display: flex; align-items: center; justify-content: center; padding: 1.5rem;
+}
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
 }
 .login-card {
   background: rgba(255,255,255,0.08);
