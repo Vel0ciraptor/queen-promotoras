@@ -7,7 +7,7 @@ import ClientCard from '../components/ClientCard';
 import NuevoClienteModal from '../components/NuevoClienteModal';
 import ClienteDetalleModal from '../components/ClienteDetalleModal';
 import { Search, Plus, LogOut, Moon, Sun } from 'lucide-react';
-import queenLogo from '../assets/copiaqueenlogo.png';
+import queenLogo from '../assets/logoqueen.png';
 
 const LIMIT = 7;
 const CHIME_SRC = '/chime.mp3';
