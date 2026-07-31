@@ -61,7 +61,7 @@ export default function ImportarExcelModal({ onClose, onImportado }) {
       if (status === 413) detail = 'El archivo es demasiado grande. Intenta con menos filas.';
       else if (status === 403) detail = 'No tienes permiso de administrador.';
       else if (status === 400) detail = msg || 'Datos inválidos en el archivo.';
-      else if (status >= 500) detail = msg || 'Error del servidor.';
+      else if (status >= 500) detail = msg || err.response?.data?.details || 'Error del servidor.';
       else if (msg) detail = msg;
       toast.error(detail);
       setStep('preview');

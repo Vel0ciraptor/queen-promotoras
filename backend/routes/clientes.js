@@ -145,10 +145,15 @@ router.post('/import', requireRol('admin'), async (req, res) => {
           );
         }
 
-        await verificarDescuentos(client, cliente, montoCompra);
+        try {
+          await verificarDescuentos(client, cliente, montoCompra);
+        } catch (descErr) {
+          console.error(`⚠️ Error verificando descuentos para fila ${i + 1}:`, descErr.message);
+        }
         resultados.importadas++;
       } catch (err) {
-        resultados.errores.push({ fila: i + 1, error: err.message });
+        console.error(`❌ Error en fila ${i + 1} (${nombre}):`, err.message);
+        resultados.errores.push({ fila: i + 1, nombre, error: err.message });
       }
     }
 
@@ -156,8 +161,9 @@ router.post('/import', requireRol('admin'), async (req, res) => {
     res.json(resultados);
   } catch (err) {
     await client.query('ROLLBACK');
-    console.error(err);
-    res.status(500).json({ error: 'Error del servidor durante la importación' });
+    console.error('❌❌❌ Error FATAL en importación:', err.message);
+    console.error(err.stack);
+    res.status(500).json({ error: 'Error del servidor durante la importación', details: err.message });
   } finally {
     client.release();
   }
