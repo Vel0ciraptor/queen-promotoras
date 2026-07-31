@@ -39,12 +39,8 @@ export default function AdminPage() {
   const SidebarContent = () => (
     <>
       {/* Logo */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0 0.5rem', marginBottom: '2rem' }}>
-        <img src={queenLogo} alt="Queen Style" style={{ width: 40, height: 22, borderRadius: '0.4rem', objectFit: 'contain', flexShrink: 0 }} />
-        <div>
-          <div style={{ fontWeight: 900, fontSize: '1rem', color: 'var(--pink-strong)' }}>Queen Style</div>
-          <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Panel Admin</div>
-        </div>
+      <div style={{ padding: '0 0.5rem', marginBottom: '2rem', textAlign: 'center' }}>
+        <img src={queenLogo} alt="Queen Style" style={{ width: '80%', maxWidth: 140, height: 'auto', objectFit: 'contain' }} />
       </div>
 
       {/* Nav */}
@@ -106,8 +102,8 @@ export default function AdminPage() {
           <button onClick={() => setSidebarOpen(true)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-primary)' }}>
             <Menu size={22}/>
           </button>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--pink-strong)', fontWeight: 900 }}>
-            <img src={queenLogo} alt="Queen Style" style={{ width: 28, height: 16, borderRadius: '0.3rem', objectFit: 'contain' }}/> Queen Style
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1 }}>
+            <img src={queenLogo} alt="Queen Style" style={{ height: 32, width: 'auto', objectFit: 'contain' }}/>
           </div>
           <button onClick={toggle} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>
             {theme === 'dark' ? <Sun size={18}/> : <Moon size={18}/>}
