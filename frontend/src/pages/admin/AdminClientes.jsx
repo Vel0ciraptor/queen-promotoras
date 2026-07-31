@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Search, Edit2, Upload, X } from 'lucide-react';
+import { Search, Edit2, Upload, X, Trash2, DollarSign } from 'lucide-react';
 import api from '../../lib/api';
 import { useToast } from '../../context/ToastContext';
 import ImportarExcelModal from '../../components/ImportarExcelModal';
@@ -74,6 +74,114 @@ function EditarClienteModal({ cliente, onClose, onGuardado }) {
   );
 }
 
+function EditarMontoModal({ cliente, onClose, onGuardado }) {
+  const toast = useToast();
+  const [monto, setMonto] = useState(cliente.monto_acumulado || 0);
+  const [comentario, setComentario] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async e => {
+    e.preventDefault();
+    if (!comentario.trim()) return toast.error('El comentario es obligatorio');
+    setLoading(true);
+    try {
+      const { data } = await api.patch(`/clientes/${cliente.id}/monto`, { monto: parseFloat(monto), comentario });
+      onGuardado(data.cliente);
+      toast.success('Monto actualizado');
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Error al guardar');
+    } finally { setLoading(false); }
+  };
+
+  return (
+    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal-sheet">
+        <div className="modal-handle"/>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'1.25rem' }}>
+          <h2 style={{ color:'var(--pink-strong)', fontSize:'1.2rem' }}>💰 Ajustar monto</h2>
+          <button className="btn btn-ghost btn-icon" onClick={onClose} style={{ minHeight:'unset' }}><X size={18}/></button>
+        </div>
+
+        <div style={{ background:'#FEF3C7', borderRadius:'0.875rem', padding:'0.75rem 1rem', marginBottom:'1rem', fontSize:'0.85rem', color:'#92400E', fontWeight:600 }}>
+          ⚠️ Toda edición queda registrada en auditoría.
+        </div>
+
+        <p style={{ fontSize:'0.85rem', color:'var(--text-muted)', marginBottom:'0.75rem' }}>
+          <strong>{cliente.nombre_completo}</strong> — Monto actual: {fmt(cliente.monto_acumulado)}
+        </p>
+
+        <form onSubmit={handleSubmit} className="gap-stack">
+          <div className="form-group">
+            <label className="form-label">Nuevo monto (Bs.)</label>
+            <input className="input" type="number" min="0" step="0.01" value={monto} onChange={e => setMonto(e.target.value)} required />
+          </div>
+          <div className="form-group">
+            <label className="form-label" style={{ color:'var(--magenta-deep)' }}>Motivo / Comentario * (obligatorio)</label>
+            <textarea
+              className="input"
+              style={{ resize:'none', minHeight:80 }}
+              placeholder="Ej: Corrección de monto por error de captura"
+              value={comentario}
+              onChange={e => setComentario(e.target.value)}
+              required
+            />
+          </div>
+          <div style={{ display:'flex', gap:'0.75rem' }}>
+            <button type="button" className="btn btn-ghost" style={{ flex:1 }} onClick={onClose}>Cancelar</button>
+            <button type="submit" className="btn btn-primary" style={{ flex:2 }} disabled={loading}>
+              {loading ? '⏳ Guardando...' : '💾 Guardar monto'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function EliminarClienteModal({ cliente, onClose, onEliminado }) {
+  const toast = useToast();
+  const [loading, setLoading] = useState(false);
+
+  const handleEliminar = async () => {
+    setLoading(true);
+    try {
+      await api.delete(`/clientes/${cliente.id}`);
+      onEliminado(cliente.id);
+      toast.success(`${cliente.nombre_completo} eliminada`);
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Error al eliminar');
+    } finally { setLoading(false); }
+  };
+
+  return (
+    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal-sheet">
+        <div className="modal-handle"/>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'1.25rem' }}>
+          <h2 style={{ color:'#DC2626', fontSize:'1.2rem' }}>🗑️ Eliminar clienta</h2>
+          <button className="btn btn-ghost btn-icon" onClick={onClose} style={{ minHeight:'unset' }}><X size={18}/></button>
+        </div>
+
+        <div style={{ background:'#FEE2E2', borderRadius:'0.875rem', padding:'0.75rem 1rem', marginBottom:'1rem', fontSize:'0.85rem', color:'#991B1B', fontWeight:600 }}>
+          ⚠️ Esta acción es irreversible. Se eliminarán todos los datos de la clienta.
+        </div>
+
+        <p style={{ fontSize:'0.9rem', marginBottom:'1.25rem' }}>
+          ¿Estás segura de eliminar a <strong>{cliente.nombre_completo}</strong>?
+          {cliente.carnet_identidad && <span> (CI: {cliente.carnet_identidad})</span>}
+        </p>
+
+        <div style={{ display:'flex', gap:'0.75rem' }}>
+          <button className="btn btn-ghost" style={{ flex:1 }} onClick={onClose}>Cancelar</button>
+          <button className="btn" style={{ flex:2, background:'#DC2626', color:'#fff', fontWeight:700 }} onClick={handleEliminar} disabled={loading}>
+            {loading ? '⏳ Eliminando...' : '🗑️ Sí, eliminar'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminClientes() {
   const toast = useToast();
   const [clientes, setClientes] = useState([]);
@@ -83,6 +191,8 @@ export default function AdminClientes() {
   const [loading, setLoading] = useState(true);
   const [editando, setEditando] = useState(null);
   const [showImport, setShowImport] = useState(false);
+  const [editandoMonto, setEditandoMonto] = useState(null);
+  const [eliminando, setEliminando] = useState(null);
 
   const fetch = useCallback(async (query, pg) => {
     setLoading(true);
@@ -112,6 +222,17 @@ export default function AdminClientes() {
     setShowImport(false);
     setPage(1);
     fetch(q, 1);
+  };
+
+  const handleMontoGuardado = updated => {
+    setClientes(prev => prev.map(c => c.id === updated.id ? { ...c, ...updated } : c));
+    setEditandoMonto(null);
+  };
+
+  const handleEliminado = id => {
+    setClientes(prev => prev.filter(c => c.id !== id));
+    setTotal(t => t - 1);
+    setEliminando(null);
   };
 
   return (
@@ -158,19 +279,32 @@ export default function AdminClientes() {
                   <td style={{ fontWeight:700 }}>{c.nombre_completo}</td>
                   <td style={{ color:'var(--text-muted)' }}>{c.carnet_identidad || '—'}</td>
                   <td style={{ color:'var(--text-muted)' }}>{c.celular || '—'}</td>
-                  <td style={{ fontWeight:800, color:'var(--pink-strong)' }}>{fmt(c.monto_acumulado)}</td>
+                  <td style={{ fontWeight:800, color:'var(--pink-strong)', cursor:'pointer' }} onClick={() => setEditandoMonto(c)} title="Ajustar monto">
+                    {fmt(c.monto_acumulado)}
+                  </td>
                   <td style={{ color:'var(--text-muted)' }}>{c.visitas_totales}</td>
                   <td style={{ color:'var(--text-muted)', fontSize:'0.8rem' }}>{fmtDate(c.fecha_registro)}</td>
                   <td>
-                    <button
-                      className="btn btn-ghost btn-icon"
-                      style={{ minHeight:'unset', padding:'0.4rem' }}
-                      onClick={() => setEditando(c)}
-                      title="Editar"
-                      id={`btn-editar-${c.id}`}
-                    >
-                      <Edit2 size={15}/>
-                    </button>
+                    <div style={{ display:'flex', gap:'0.25rem' }}>
+                      <button
+                        className="btn btn-ghost btn-icon"
+                        style={{ minHeight:'unset', padding:'0.4rem' }}
+                        onClick={() => setEditando(c)}
+                        title="Editar"
+                        id={`btn-editar-${c.id}`}
+                      >
+                        <Edit2 size={15}/>
+                      </button>
+                      <button
+                        className="btn btn-ghost btn-icon"
+                        style={{ minHeight:'unset', padding:'0.4rem', color:'#DC2626' }}
+                        onClick={() => setEliminando(c)}
+                        title="Eliminar"
+                        id={`btn-eliminar-${c.id}`}
+                      >
+                        <Trash2 size={15}/>
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -193,6 +327,14 @@ export default function AdminClientes() {
 
       {editando && (
         <EditarClienteModal cliente={editando} onClose={() => setEditando(null)} onGuardado={handleGuardado} />
+      )}
+
+      {editandoMonto && (
+        <EditarMontoModal cliente={editandoMonto} onClose={() => setEditandoMonto(null)} onGuardado={handleMontoGuardado} />
+      )}
+
+      {eliminando && (
+        <EliminarClienteModal cliente={eliminando} onClose={() => setEliminando(null)} onEliminado={handleEliminado} />
       )}
 
       {showImport && (

@@ -290,6 +290,56 @@ router.put('/:id', requireRol('admin'), async (req, res) => {
   }
 });
 
+// DELETE /api/clientes/:id — admin elimina cliente
+router.delete('/:id', requireRol('admin'), async (req, res) => {
+  try {
+    const { rows } = await pool.query('DELETE FROM clientes WHERE id = $1 RETURNING id, nombre_completo', [req.params.id]);
+    if (!rows.length) return res.status(404).json({ error: 'Cliente no encontrado' });
+    res.json({ eliminado: rows[0] });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error del servidor' });
+  }
+});
+
+// PATCH /api/clientes/:id/monto — admin ajusta monto acumulado
+router.patch('/:id/monto', requireRol('admin'), async (req, res) => {
+  const { monto, comentario } = req.body;
+  if (monto === undefined || monto === null) return res.status(400).json({ error: 'Monto requerido' });
+  if (!comentario || comentario.trim().length < 3) {
+    return res.status(400).json({ error: 'El comentario es obligatorio' });
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const { rows: prev } = await client.query('SELECT * FROM clientes WHERE id = $1', [req.params.id]);
+    if (!prev.length) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'No encontrado' }); }
+    const old = prev[0];
+
+    await client.query(
+      `INSERT INTO ediciones_admin (cliente_id, admin_id, campo_modificado, valor_anterior, valor_nuevo, comentario)
+       VALUES ($1, $2, 'monto_acumulado', $3, $4, $5)`,
+      [req.params.id, req.user.id, old.monto_acumulado, monto, comentario]
+    );
+
+    const { rows } = await client.query(
+      `UPDATE clientes SET monto_acumulado = $1, actualizado_en = NOW() WHERE id = $2 RETURNING *`,
+      [monto, req.params.id]
+    );
+
+    await client.query('COMMIT');
+    res.json({ cliente: rows[0] });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error(err);
+    res.status(500).json({ error: 'Error del servidor' });
+  } finally {
+    client.release();
+  }
+});
+
 // GET /api/clientes/:id/notificaciones
 router.get('/:id/notificaciones', async (req, res) => {
   try {

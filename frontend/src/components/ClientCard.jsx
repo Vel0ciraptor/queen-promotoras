@@ -33,7 +33,7 @@ export default function ClientCard({ cliente, onClick }) {
           )}
         </div>
         <div style={{ display: 'flex', gap: '1rem', marginTop: '0.3rem', fontSize: '0.82rem', color: 'var(--text-muted)', flexWrap: 'wrap' }}>
-          <span>💰 {formatMonto(cliente.monto_acumulado)}</span>
+          {cliente.carnet_identidad && <span>🪪 {cliente.carnet_identidad}</span>}
           <span>🛍️ {cliente.visitas_totales} visita{cliente.visitas_totales !== 1 ? 's' : ''}</span>
           {cliente.celular && <span>📱 {cliente.celular}</span>}
         </div>
