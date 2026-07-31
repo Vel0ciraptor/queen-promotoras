@@ -33,20 +33,16 @@ export default function LoginPage() {
   return (
     <div className="login-bg">
       <div className="login-card">
-        {/* Logo / Brand */}
+        {/* Logo */}
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
           <img
             src={queenLogo}
             alt="Queen Style Logo"
             style={{
-              width: 140, height: 70, borderRadius: '0.75rem', margin: '0 auto 1rem',
-              objectFit: 'contain', boxShadow: '0 8px 24px rgba(255,61,143,0.3)'
+              width: 160, height: 80, borderRadius: '0.75rem', margin: '0 auto',
+              objectFit: 'contain', filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.2))'
             }}
           />
-          <h1 style={{ color: 'var(--pink-strong)', fontSize: '1.75rem', fontWeight: 900 }}>Queen Style</h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginTop: '0.25rem' }}>
-            Sistema de fidelización
-          </p>
         </div>
 
         <form onSubmit={handleSubmit} className="gap-stack">
@@ -91,7 +87,7 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <p style={{ textAlign: 'center', marginTop: '1.5rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+        <p style={{ textAlign: 'center', marginTop: '1.5rem', fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)' }}>
           Queen Promotoras © {new Date().getFullYear()}
         </p>
       </div>
