@@ -75,27 +75,52 @@ router.post('/import', requireRol('admin'), async (req, res) => {
   const client = await pool.connect();
   const resultados = { importadas: 0, errores: [], columnas_detectadas: [] };
 
+  // Normalizar keys del Excel: trim + lowercase para buscar por sinónimos
+  function normalizeRow(row) {
+    const norm = {};
+    for (const [key, val] of Object.entries(row)) {
+      norm[key.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')] = val;
+      norm[key.trim()] = val; // also keep original trimmed
+    }
+    return norm;
+  }
+
+  function findVal(row, ...candidates) {
+    for (const c of candidates) {
+      if (row[c] !== undefined && row[c] !== null && String(row[c]).trim() !== '') return String(row[c]).trim();
+    }
+    return null;
+  }
+
   try {
     await client.query('BEGIN');
 
     for (let i = 0; i < clientes.length; i++) {
-      const row = clientes[i];
+      const raw = clientes[i];
+      const row = normalizeRow(raw);
 
       if (i === 0) {
-        resultados.columnas_detectadas = Object.keys(row);
+        resultados.columnas_detectadas = Object.keys(raw);
       }
 
-      const nombre = (row.Nombre || row.nombre || row.NOMBRE || row['Nombre completo'] || '').trim();
+      const nombre = findVal(row,
+        'nombre', 'nombrecompleto', 'nombre_completo', 'nombre completo',
+        'nombre completo', 'nombres'
+      );
       if (!nombre) {
         resultados.errores.push({ fila: i + 1, error: 'Nombre vacío' });
         continue;
       }
 
-      const telefono = (row.Teléfono || row.telefono || row.Telefono || row.TELEFONO || row.Celular || row.celular || row.CELULAR || row.Tel || row.tel || row.Cel || '').trim() || null;
-      const ci = (row.Ci || row.ci || row.CI || row['C.I'] || row['C.I.'] || row.Carnet || row.carnet || row.CARNET || '').trim() || null;
-      const montoCompra = parseFloat(row.Monto || row.monto || row.MONTO || row['Monto de Compra'] || row['MONTO DE COMPRA'] || row.monto_compra || 0) || 0;
-      const vecesCompradas = parseInt(row['Veces que compro'] || row['veces que compro'] || row['VECES QUE COMPRO'] || row['VECES COMPRADAS'] || row['Veces Compradas'] || row.visitas || row.Visitas || row.VISITAS || 0) || 0;
-      const fechaRegistro = (row['FECHA DE REGISTRO'] || row.fecha || row.Fecha || row.FECHA || '').trim() || null;
+      const telefono = findVal(row,
+        'telefono', 'teléfono', 'celular', 'cel', 'tel', 'movil', 'móvil', 'phone'
+      );
+      const ci = findVal(row,
+        'ci', 'c.i', 'c.i.', 'carnet', 'carnetidentidad', 'carnet identidad', 'carnet de identidad', 'cedula', 'cedula', 'dni'
+      );
+      const montoCompra = parseFloat(findVal(row, 'monto', 'monto de compra', 'montodecompra', 'monto_compra', 'total', 'compra') || 0) || 0;
+      const vecesCompradas = parseInt(findVal(row, 'veces que compro', 'vecesquecompro', 'veces_compradas', 'veces compradas', 'visitas', 'compras', 'totalcompras') || 0) || 0;
+      const fechaRegistro = findVal(row, 'fecha de registro', 'fechaderegistro', 'fecha_registro', 'fecha', 'fechacompra', 'fecha de compra');
 
       let fechaISO = null;
       if (fechaRegistro) {
