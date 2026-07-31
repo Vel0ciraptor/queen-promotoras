@@ -106,6 +106,7 @@ export default function ImportarExcelModal({ onClose, onImportado }) {
             <div style={{ marginTop: '1.5rem', textAlign: 'left', fontSize: '0.8rem', color: 'var(--text-muted)', background: 'var(--surface)', borderRadius: '0.75rem', padding: '1rem' }}>
               <p style={{ fontWeight: 700, marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>Columnas esperadas:</p>
               <p>Nombre, Ci, Teléfono, Monto, Veces que compro</p>
+              <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>También acepta: C.I, C.I., Carnet, Telefono (sin tilde), Celular, Monto de Compra, VECES COMPRADAS</p>
             </div>
           </div>
         )}

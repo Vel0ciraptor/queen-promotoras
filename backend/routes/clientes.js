@@ -85,17 +85,17 @@ router.post('/import', requireRol('admin'), async (req, res) => {
         resultados.columnas_detectadas = Object.keys(row);
       }
 
-      const nombre = (row.Nombre || row.nombre || '').trim();
+      const nombre = (row.Nombre || row.nombre || row.NOMBRE || row['Nombre completo'] || '').trim();
       if (!nombre) {
         resultados.errores.push({ fila: i + 1, error: 'Nombre vacío' });
         continue;
       }
 
-      const telefono = (row.Teléfono || row.telefono || row.Telefono || row.celular || '').trim() || null;
-      const ci = (row.Ci || row.ci || row.CI || row['C.I'] || '').trim() || null;
-      const montoCompra = parseFloat(row.Monto || row.monto || row['MONTO DE COMPRA'] || 0) || 0;
-      const vecesCompradas = parseInt(row['Veces que compro'] || row['VECES COMPRADAS'] || row.visitas || 0) || 0;
-      const fechaRegistro = (row['FECHA DE REGISTRO'] || row.fecha || '').trim() || null;
+      const telefono = (row.Teléfono || row.telefono || row.Telefono || row.TELEFONO || row.Celular || row.celular || row.CELULAR || row.Tel || row.tel || row.Cel || '').trim() || null;
+      const ci = (row.Ci || row.ci || row.CI || row['C.I'] || row['C.I.'] || row.Carnet || row.carnet || row.CARNET || '').trim() || null;
+      const montoCompra = parseFloat(row.Monto || row.monto || row.MONTO || row['Monto de Compra'] || row['MONTO DE COMPRA'] || row.monto_compra || 0) || 0;
+      const vecesCompradas = parseInt(row['Veces que compro'] || row['veces que compro'] || row['VECES QUE COMPRO'] || row['VECES COMPRADAS'] || row['Veces Compradas'] || row.visitas || row.Visitas || row.VISITAS || 0) || 0;
+      const fechaRegistro = (row['FECHA DE REGISTRO'] || row.fecha || row.Fecha || row.FECHA || '').trim() || null;
 
       let fechaISO = null;
       if (fechaRegistro) {
