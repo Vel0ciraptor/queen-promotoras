@@ -39,8 +39,11 @@ function splitStatements(sql) {
 }
 
 export async function runMigrations() {
+  console.log('🔧 [MIGRACIONES] Iniciando...');
+  console.log(`🔧 [MIGRACIONES] DB_HOST=${process.env.DB_HOST || 'NO DEFINIDO'} DB_NAME=${process.env.DB_NAME || 'NO DEFINIDO'} DB_USER=${process.env.DB_USER || 'NO DEFINIDO'} DB_PORT=${process.env.DB_PORT || 'NO DEFINIDO'}`);
   const client = await pool.connect();
   try {
+    console.log('🔧 [MIGRACIONES] Conexión a PostgreSQL exitosa');
     const { rows } = await client.query(`
       SELECT EXISTS (
         SELECT FROM information_schema.tables 
@@ -49,12 +52,15 @@ export async function runMigrations() {
     `);
 
     const tableExists = rows[0]?.exists;
+    console.log(`🔧 [MIGRACIONES] Tabla usuarios existe: ${tableExists}`);
 
     if (!tableExists) {
       console.log('📌 Inicializando tablas y esquema en PostgreSQL...');
       const schemaPath = path.join(__dirname, 'schema.sql');
       const sql = fs.readFileSync(schemaPath, 'utf8');
+      console.log(`🔧 [MIGRACIONES] schema.sql leído: ${sql.length} caracteres`);
       const statements = splitStatements(sql);
+      console.log(`🔧 [MIGRACIONES] ${statements.length} statements separados`);
 
       await client.query('BEGIN');
 
@@ -80,10 +86,10 @@ export async function runMigrations() {
     }
   } catch (err) {
     await client.query('ROLLBACK').catch(() => {});
-    console.error('❌ Error FATAL al ejecutar migraciones:', err.message);
-    console.error('   La app no puede funcionar sin las tablas de la base de datos.');
-    console.error('   Verifica las variables de entorno DB_* y que PostgreSQL esté accesible.');
+    console.error('❌❌❌ Error FATAL al ejecutar migraciones:', err.message);
+    console.error(err.stack);
   } finally {
     client.release();
+    console.log('🔧 [MIGRACIONES] Conexión liberada');
   }
 }
