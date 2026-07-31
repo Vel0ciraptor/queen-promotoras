@@ -21,7 +21,7 @@ function splitStatements(sql) {
 
     if (sql[i] === ';' && !inDollarQuote) {
       const trimmed = current.trim();
-      if (trimmed.length > 0 && !trimmed.startsWith('--')) {
+      if (trimmed.length > 0) {
         statements.push(trimmed);
       }
       current = '';
@@ -31,7 +31,7 @@ function splitStatements(sql) {
   }
 
   const trimmed = current.trim();
-  if (trimmed.length > 0 && !trimmed.startsWith('--')) {
+  if (trimmed.length > 0) {
     statements.push(trimmed);
   }
 
@@ -60,7 +60,9 @@ export async function runMigrations() {
 
       for (let i = 0; i < statements.length; i++) {
         const stmt = statements[i];
-        const preview = stmt.substring(0, 80).replace(/\n/g, ' ');
+        const clean = stmt.replace(/^--.*$/gm, '').trim();
+        if (!clean) continue;
+        const preview = clean.substring(0, 80).replace(/\n/g, ' ');
         try {
           await client.query(stmt + ';');
           console.log(`  ✅ [${i + 1}/${statements.length}] ${preview}...`);
