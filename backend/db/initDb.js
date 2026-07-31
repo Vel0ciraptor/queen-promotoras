@@ -7,10 +7,35 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 function splitStatements(sql) {
-  return sql
-    .split(';')
-    .map(s => s.trim())
-    .filter(s => s.length > 0 && !s.startsWith('--'));
+  const statements = [];
+  let current = '';
+  let inDollarQuote = false;
+
+  for (let i = 0; i < sql.length; i++) {
+    if (sql.substring(i, i + 2) === '$$') {
+      inDollarQuote = !inDollarQuote;
+      current += '$$';
+      i++;
+      continue;
+    }
+
+    if (sql[i] === ';' && !inDollarQuote) {
+      const trimmed = current.trim();
+      if (trimmed.length > 0 && !trimmed.startsWith('--')) {
+        statements.push(trimmed);
+      }
+      current = '';
+    } else {
+      current += sql[i];
+    }
+  }
+
+  const trimmed = current.trim();
+  if (trimmed.length > 0 && !trimmed.startsWith('--')) {
+    statements.push(trimmed);
+  }
+
+  return statements;
 }
 
 export async function runMigrations() {
@@ -53,7 +78,9 @@ export async function runMigrations() {
     }
   } catch (err) {
     await client.query('ROLLBACK').catch(() => {});
-    console.error('⚠️ Error al ejecutar migraciones automáticas:', err.message);
+    console.error('❌ Error FATAL al ejecutar migraciones:', err.message);
+    console.error('   La app no puede funcionar sin las tablas de la base de datos.');
+    console.error('   Verifica las variables de entorno DB_* y que PostgreSQL esté accesible.');
   } finally {
     client.release();
   }
