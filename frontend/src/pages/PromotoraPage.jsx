@@ -95,7 +95,7 @@ export default function PromotoraPage() {
       {/* Header */}
       <header className="app-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-          <img src={queenLogo} alt="Queen Style" style={{ width: 26, height: 26, borderRadius: '50%', objectFit: 'cover' }} />
+          <img src={queenLogo} alt="Queen Style" style={{ width: 36, height: 20, borderRadius: '0.35rem', objectFit: 'contain' }} />
           <span style={{ fontWeight: 900, fontSize: '1.15rem', letterSpacing: '-0.01em' }}>Queen Style</span>
         </div>
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>

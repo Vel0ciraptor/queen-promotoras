@@ -11,6 +11,7 @@ export default function ImportarExcelModal({ onClose, onImportado }) {
   const [fileName, setFileName] = useState('');
   const [preview, setPreview] = useState([]);
   const [allData, setAllData] = useState([]);
+  const [detectedCols, setDetectedCols] = useState([]);
   const [result, setResult] = useState(null);
 
   const handleFile = e => {
@@ -32,6 +33,7 @@ export default function ImportarExcelModal({ onClose, onImportado }) {
 
         setAllData(json);
         setPreview(json.slice(0, 5));
+        setDetectedCols(Object.keys(json[0]));
         setStep('preview');
       } catch {
         toast.error('No se pudo leer el archivo. Asegúrate de que sea .xlsx, .xls o .csv');
@@ -53,7 +55,15 @@ export default function ImportarExcelModal({ onClose, onImportado }) {
       }
       onImportado();
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Error al importar');
+      const status = err.response?.status;
+      const msg = err.response?.data?.error;
+      let detail = 'Error al importar';
+      if (status === 413) detail = 'El archivo es demasiado grande. Intenta con menos filas.';
+      else if (status === 403) detail = 'No tienes permiso de administrador.';
+      else if (status === 400) detail = msg || 'Datos inválidos en el archivo.';
+      else if (status >= 500) detail = msg || 'Error del servidor.';
+      else if (msg) detail = msg;
+      toast.error(detail);
       setStep('preview');
     }
   };
@@ -95,17 +105,29 @@ export default function ImportarExcelModal({ onClose, onImportado }) {
 
             <div style={{ marginTop: '1.5rem', textAlign: 'left', fontSize: '0.8rem', color: 'var(--text-muted)', background: 'var(--surface)', borderRadius: '0.75rem', padding: '1rem' }}>
               <p style={{ fontWeight: 700, marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>Columnas esperadas:</p>
-              <p>Nombre, Telefono, C.I, MONTO DE COMPRA, VECES COMPRADAS, FECHA DE REGISTRO</p>
+              <p>Nombre, Ci, Teléfono, Monto, Veces que compro</p>
             </div>
           </div>
         )}
 
         {step === 'preview' && (
           <>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', fontSize: '0.85rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem', fontSize: '0.85rem' }}>
               <FileSpreadsheet size={16} style={{ color: 'var(--pink-strong)' }} />
               <span style={{ fontWeight: 700 }}>{fileName}</span>
               <span style={{ color: 'var(--text-muted)' }}>— {allData.length} fila{allData.length !== 1 ? 's' : ''}</span>
+            </div>
+
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', marginBottom: '1rem' }}>
+              <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 700 }}>Columnas detectadas:</span>
+              {detectedCols.map(col => (
+                <span key={col} style={{
+                  fontSize: '0.7rem', padding: '0.15rem 0.5rem', borderRadius: '0.5rem',
+                  background: ['Nombre','Ci','Teléfono','Monto','Veces que compro'].includes(col) ? '#D1FAE5' : '#FEF3C7',
+                  color: ['Nombre','Ci','Teléfono','Monto','Veces que compro'].includes(col) ? '#065F46' : '#92400E',
+                  fontWeight: 600
+                }}>{col}</span>
+              ))}
             </div>
 
             <div style={{ overflowX: 'auto', marginBottom: '1.25rem', borderRadius: '0.75rem', border: '1px solid var(--border)' }}>
@@ -113,20 +135,20 @@ export default function ImportarExcelModal({ onClose, onImportado }) {
                 <thead>
                   <tr style={{ background: 'var(--surface)' }}>
                     <th style={{ padding: '0.5rem', textAlign: 'left' }}>Nombre</th>
-                    <th style={{ padding: '0.5rem', textAlign: 'left' }}>CI</th>
+                    <th style={{ padding: '0.5rem', textAlign: 'left' }}>Ci</th>
                     <th style={{ padding: '0.5rem', textAlign: 'left' }}>Teléfono</th>
                     <th style={{ padding: '0.5rem', textAlign: 'right' }}>Monto</th>
-                    <th style={{ padding: '0.5rem', textAlign: 'right' }}>Visitas</th>
+                    <th style={{ padding: '0.5rem', textAlign: 'right' }}>Veces que compro</th>
                   </tr>
                 </thead>
                 <tbody>
                   {preview.map((row, i) => (
                     <tr key={i} style={{ borderTop: '1px solid var(--border)' }}>
                       <td style={{ padding: '0.4rem 0.5rem' }}>{row.Nombre || row.nombre || '—'}</td>
-                      <td style={{ padding: '0.4rem 0.5rem', color: 'var(--text-muted)' }}>{row['C.I'] || row.ci || '—'}</td>
-                      <td style={{ padding: '0.4rem 0.5rem', color: 'var(--text-muted)' }}>{row.Telefono || row.telefono || '—'}</td>
-                      <td style={{ padding: '0.4rem 0.5rem', textAlign: 'right', fontWeight: 700 }}>{row['MONTO DE COMPRA'] || row.monto || 0}</td>
-                      <td style={{ padding: '0.4rem 0.5rem', textAlign: 'right', color: 'var(--text-muted)' }}>{row['VECES COMPRADAS'] || row.visitas || 0}</td>
+                      <td style={{ padding: '0.4rem 0.5rem', color: 'var(--text-muted)' }}>{row.Ci || row.ci || row['C.I'] || '—'}</td>
+                      <td style={{ padding: '0.4rem 0.5rem', color: 'var(--text-muted)' }}>{row.Teléfono || row.telefono || '—'}</td>
+                      <td style={{ padding: '0.4rem 0.5rem', textAlign: 'right', fontWeight: 700 }}>{row.Monto || row.monto || 0}</td>
+                      <td style={{ padding: '0.4rem 0.5rem', textAlign: 'right', color: 'var(--text-muted)' }}>{row['Veces que compro'] || row['VECES COMPRADAS'] || 0}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -166,6 +188,12 @@ export default function ImportarExcelModal({ onClose, onImportado }) {
             <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
               {result.importadas} cliente{result.importadas !== 1 ? 's' : ''} importada{result.importadas !== 1 ? 's' : ''}
             </p>
+
+            {result.columnas_detectadas?.length > 0 && (
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
+                Columnas leídas: {result.columnas_detectadas.join(', ')}
+              </div>
+            )}
 
             {result.errores.length > 0 && (
               <div style={{ textAlign: 'left', background: '#FEF3C7', borderRadius: '0.75rem', padding: '0.75rem 1rem', marginBottom: '1rem', maxHeight: 150, overflowY: 'auto' }}>

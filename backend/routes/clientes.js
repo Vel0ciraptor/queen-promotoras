@@ -73,23 +73,28 @@ router.post('/import', requireRol('admin'), async (req, res) => {
   }
 
   const client = await pool.connect();
-  const resultados = { importadas: 0, errores: [] };
+  const resultados = { importadas: 0, errores: [], columnas_detectadas: [] };
 
   try {
     await client.query('BEGIN');
 
     for (let i = 0; i < clientes.length; i++) {
       const row = clientes[i];
+
+      if (i === 0) {
+        resultados.columnas_detectadas = Object.keys(row);
+      }
+
       const nombre = (row.Nombre || row.nombre || '').trim();
       if (!nombre) {
         resultados.errores.push({ fila: i + 1, error: 'Nombre vacío' });
         continue;
       }
 
-      const telefono = (row.Telefono || row.telefono || row.Celular || row.celular || '').trim() || null;
-      const ci = (row['C.I'] || row.ci || row.CI || '').trim() || null;
-      const montoCompra = parseFloat(row['MONTO DE COMPRA'] || row.monto || 0) || 0;
-      const vecesCompradas = parseInt(row['VECES COMPRADAS'] || row.visitas || 0) || 0;
+      const telefono = (row.Teléfono || row.telefono || row.Telefono || row.celular || '').trim() || null;
+      const ci = (row.Ci || row.ci || row.CI || row['C.I'] || '').trim() || null;
+      const montoCompra = parseFloat(row.Monto || row.monto || row['MONTO DE COMPRA'] || 0) || 0;
+      const vecesCompradas = parseInt(row['Veces que compro'] || row['VECES COMPRADAS'] || row.visitas || 0) || 0;
       const fechaRegistro = (row['FECHA DE REGISTRO'] || row.fecha || '').trim() || null;
 
       let fechaISO = null;

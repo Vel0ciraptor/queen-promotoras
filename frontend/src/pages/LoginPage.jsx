@@ -39,8 +39,8 @@ export default function LoginPage() {
             src={queenLogo}
             alt="Queen Style Logo"
             style={{
-              width: 90, height: 90, borderRadius: '50%', margin: '0 auto 1rem',
-              objectFit: 'cover', boxShadow: '0 8px 24px rgba(255,61,143,0.5)'
+              width: 140, height: 70, borderRadius: '0.75rem', margin: '0 auto 1rem',
+              objectFit: 'contain', boxShadow: '0 8px 24px rgba(255,61,143,0.3)'
             }}
           />
           <h1 style={{ color: 'var(--pink-strong)', fontSize: '1.75rem', fontWeight: 900 }}>Queen Style</h1>
