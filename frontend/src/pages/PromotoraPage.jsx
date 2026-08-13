@@ -6,7 +6,8 @@ import api from '../lib/api';
 import ClientCard from '../components/ClientCard';
 import NuevoClienteModal from '../components/NuevoClienteModal';
 import ClienteDetalleModal from '../components/ClienteDetalleModal';
-import { Search, Plus, LogOut, Moon, Sun } from 'lucide-react';
+import CompletarInfoModal from '../components/CompletarInfoModal';
+import { Search, Plus, LogOut, Moon, Sun, ArrowUpDown } from 'lucide-react';
 import queenLogo from '../assets/logoqueen.png';
 
 const LIMIT = 7;
@@ -24,14 +25,17 @@ export default function PromotoraPage() {
   const [loading, setLoading] = useState(false);
   const [showNuevo, setShowNuevo] = useState(false);
   const [selected, setSelected] = useState(null);
+  const [sortBy, setSortBy] = useState('fecha');
+  const [sortOrder, setSortOrder] = useState('desc');
+  const [completandoInfo, setCompletandoInfo] = useState(null);
 
   const chimeRef = useRef(null);
   const searchDebounce = useRef(null);
 
-  const fetchClientes = useCallback(async (query, pg) => {
+  const fetchClientes = useCallback(async (query, pg, sort = sortBy, order = sortOrder) => {
     setLoading(true);
     try {
-      const { data } = await api.get('/clientes', { params: { q: query, page: pg, limit: LIMIT } });
+      const { data } = await api.get('/clientes', { params: { q: query, page: pg, limit: LIMIT, sortBy: sort, sortOrder: order } });
       if (pg === 1) setClientes(data.clientes);
       else setClientes(prev => [...prev, ...data.clientes]);
       setTotal(data.total);
@@ -40,7 +44,7 @@ export default function PromotoraPage() {
     } finally {
       setLoading(false);
     }
-  }, [toast]);
+  }, [toast, sortBy, sortOrder]);
 
   useEffect(() => {
     fetchClientes(q, 1);
@@ -56,6 +60,26 @@ export default function PromotoraPage() {
       fetchClientes(val, 1);
     }, 350);
   };
+
+  const handleSort = (newSortBy) => {
+    let newOrder = 'desc';
+    if (sortBy === newSortBy) {
+      newOrder = sortOrder === 'desc' ? 'asc' : 'desc';
+    } else {
+      newOrder = newSortBy === 'nombre' ? 'asc' : 'desc';
+    }
+    setSortBy(newSortBy);
+    setSortOrder(newOrder);
+    setPage(1);
+    fetchClientes(q, 1, newSortBy, newOrder);
+  };
+
+  const sortOptions = [
+    { key: 'fecha', label: 'Más recientes' },
+    { key: 'nombre', label: 'Nombre A-Z' },
+    { key: 'monto', label: 'Mayor monto' },
+    { key: 'visitas', label: 'Más visitas' }
+  ];
 
   const handleCargarMas = () => {
     const nextPage = page + 1;
@@ -83,6 +107,12 @@ export default function PromotoraPage() {
       chimeRef.current?.play?.().catch(() => {});
     }
     setSelected(null);
+  };
+
+  const handleInfoCompletada = (clienteActualizado) => {
+    setClientes(prev => prev.map(c => c.id === clienteActualizado.id ? { ...c, ...clienteActualizado } : c));
+    setCompletandoInfo(null);
+    toast.success('Información actualizada');
   };
 
   const hayMas = clientes.length < total;
@@ -123,8 +153,36 @@ export default function PromotoraPage() {
             autoComplete="off"
           />
         </div>
-        <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.4rem', paddingLeft: '0.25rem' }}>
-          {total} cliente{total !== 1 ? 's' : ''} registrada{total !== 1 ? 's' : ''}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '0.5rem', paddingLeft: '0.25rem' }}>
+          <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+            {total} cliente{total !== 1 ? 's' : ''} registrada{total !== 1 ? 's' : ''}
+          </span>
+          <div style={{ display: 'flex', gap: '0.35rem', overflowX: 'auto', paddingBottom: '0.25rem' }}>
+            {sortOptions.map(opt => (
+              <button
+                key={opt.key}
+                onClick={() => handleSort(opt.key)}
+                style={{
+                  fontSize: '0.72rem',
+                  padding: '0.25rem 0.5rem',
+                  borderRadius: '1rem',
+                  border: 'none',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  fontWeight: sortBy === opt.key ? 700 : 500,
+                  background: sortBy === opt.key ? 'var(--pink-strong)' : 'var(--bg-secondary)',
+                  color: sortBy === opt.key ? '#fff' : 'var(--text-muted)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.2rem',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                <ArrowUpDown size={10} />
+                {opt.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -143,7 +201,7 @@ export default function PromotoraPage() {
         ) : (
           <>
             {clientes.map(c => (
-              <ClientCard key={c.id} cliente={c} onClick={() => setSelected(c)} />
+              <ClientCard key={c.id} cliente={c} onClick={() => setSelected(c)} onCompletar={(cliente) => setCompletandoInfo(cliente)} />
             ))}
             {hayMas && (
               <button
@@ -174,6 +232,13 @@ export default function PromotoraPage() {
           cliente={selected}
           onClose={() => setSelected(null)}
           onIngresoRegistrado={handleIngresoRegistrado}
+        />
+      )}
+      {completandoInfo && (
+        <CompletarInfoModal
+          cliente={completandoInfo}
+          onClose={() => setCompletandoInfo(null)}
+          onGuardado={handleInfoCompletada}
         />
       )}
     </div>

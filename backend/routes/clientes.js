@@ -10,12 +10,23 @@ async function limpiarDescuentos() {
   await pool.query(`UPDATE descuentos SET activo = false WHERE activo = true AND fecha_expiracion IS NOT NULL AND fecha_expiracion < NOW()`);
 }
 
-// GET /api/clientes?q=&page=1&limit=7
+// GET /api/clientes?q=&page=1&limit=7&sortBy=fecha_registro&sortOrder=desc
+const SORTABLE_COLUMNS = {
+  nombre: 'c.nombre_completo',
+  carnet: 'c.carnet_identidad',
+  monto: 'c.monto_acumulado',
+  visitas: 'c.visitas_totales',
+  fecha: 'c.fecha_registro'
+};
+
 router.get('/', async (req, res) => {
   await limpiarDescuentos();
-  const { q = '', page = 1, limit = 7 } = req.query;
+  const { q = '', page = 1, limit = 7, sortBy = 'fecha', sortOrder = 'desc' } = req.query;
   const offset = (parseInt(page) - 1) * parseInt(limit);
   const search = `%${q}%`;
+
+  const orderColumn = SORTABLE_COLUMNS[sortBy] || SORTABLE_COLUMNS.fecha;
+  const orderDirection = sortOrder === 'asc' ? 'ASC' : 'DESC';
 
   try {
     const { rows } = await pool.query(
@@ -27,7 +38,7 @@ router.get('/', async (req, res) => {
        FROM clientes c
        LEFT JOIN usuarios u ON c.creado_por = u.id
        WHERE c.nombre_completo ILIKE $1 OR c.carnet_identidad ILIKE $1 OR c.celular ILIKE $1
-       ORDER BY c.fecha_registro DESC
+       ORDER BY ${orderColumn} ${orderDirection}
        LIMIT $2 OFFSET $3`,
       [search, limit, offset]
     );
@@ -299,6 +310,58 @@ router.delete('/:id', requireRol('admin'), async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Error del servidor' });
+  }
+});
+
+// PATCH /api/clientes/:id/completar — promotora completa info faltante (solo campos vacíos)
+router.patch('/:id/completar', async (req, res) => {
+  const { carnet_identidad, celular } = req.body;
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const { rows: prev } = await client.query('SELECT * FROM clientes WHERE id = $1', [req.params.id]);
+    if (!prev.length) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Cliente no encontrado' });
+    }
+    const old = prev[0];
+
+    const updates = [];
+    const values = [];
+    let idx = 1;
+
+    if (carnet_identidad && (!old.carnet_identidad || old.carnet_identidad.trim() === '')) {
+      updates.push(`carnet_identidad = $${idx++}`);
+      values.push(carnet_identidad);
+    }
+    if (celular && (!old.celular || old.celular.trim() === '')) {
+      updates.push(`celular = $${idx++}`);
+      values.push(celular);
+    }
+
+    if (updates.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'No hay campos vacíos para completar' });
+    }
+
+    updates.push(`actualizado_en = NOW()`);
+    values.push(req.params.id);
+
+    const { rows } = await client.query(
+      `UPDATE clientes SET ${updates.join(', ')} WHERE id = $${idx} RETURNING *`,
+      values
+    );
+
+    await client.query('COMMIT');
+    res.json({ cliente: rows[0] });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error(err);
+    res.status(500).json({ error: 'Error del servidor' });
+  } finally {
+    client.release();
   }
 });
 

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Search, Edit2, Upload, X, Trash2, DollarSign } from 'lucide-react';
+import { Search, Edit2, Upload, X, Trash2, DollarSign, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import api from '../../lib/api';
 import { useToast } from '../../context/ToastContext';
 import ImportarExcelModal from '../../components/ImportarExcelModal';
@@ -193,17 +193,19 @@ export default function AdminClientes() {
   const [showImport, setShowImport] = useState(false);
   const [editandoMonto, setEditandoMonto] = useState(null);
   const [eliminando, setEliminando] = useState(null);
+  const [sortBy, setSortBy] = useState('fecha');
+  const [sortOrder, setSortOrder] = useState('desc');
 
-  const fetch = useCallback(async (query, pg) => {
+  const fetch = useCallback(async (query, pg, sort = sortBy, order = sortOrder) => {
     setLoading(true);
     try {
-      const { data } = await api.get('/clientes', { params: { q: query, page: pg, limit: 15 } });
+      const { data } = await api.get('/clientes', { params: { q: query, page: pg, limit: 15, sortBy: sort, sortOrder: order } });
       if (pg === 1) setClientes(data.clientes);
       else setClientes(prev => [...prev, ...data.clientes]);
       setTotal(data.total);
     } catch { toast.error('Error cargando clientes'); }
     finally { setLoading(false); }
-  }, [toast]);
+  }, [toast, sortBy, sortOrder]);
 
   useEffect(() => { fetch('', 1); }, []);
 
@@ -211,6 +213,22 @@ export default function AdminClientes() {
     const v = e.target.value; setQ(v);
     clearTimeout(window._csearch);
     window._csearch = setTimeout(() => { setPage(1); fetch(v, 1); }, 350);
+  };
+
+  const handleSort = (column) => {
+    let newOrder = 'desc';
+    if (sortBy === column) {
+      newOrder = sortOrder === 'desc' ? 'asc' : 'desc';
+    }
+    setSortBy(column);
+    setSortOrder(newOrder);
+    setPage(1);
+    fetch(q, 1, column, newOrder);
+  };
+
+  const SortIcon = ({ column }) => {
+    if (sortBy !== column) return <ArrowUpDown size={12} style={{ opacity: 0.4 }} />;
+    return sortOrder === 'desc' ? <ArrowDown size={12} /> : <ArrowUp size={12} />;
   };
 
   const handleGuardado = updated => {
@@ -264,12 +282,22 @@ export default function AdminClientes() {
           <table>
             <thead>
               <tr>
-                <th>Nombre</th>
-                <th>CI</th>
+                <th onClick={() => handleSort('nombre')} style={{ cursor: 'pointer', userSelect: 'none', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                  Nombre <SortIcon column="nombre" />
+                </th>
+                <th onClick={() => handleSort('carnet')} style={{ cursor: 'pointer', userSelect: 'none', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                  CI <SortIcon column="carnet" />
+                </th>
                 <th>Celular</th>
-                <th>Acumulado</th>
-                <th>Visitas</th>
-                <th>Registro</th>
+                <th onClick={() => handleSort('monto')} style={{ cursor: 'pointer', userSelect: 'none', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                  Acumulado <SortIcon column="monto" />
+                </th>
+                <th onClick={() => handleSort('visitas')} style={{ cursor: 'pointer', userSelect: 'none', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                  Visitas <SortIcon column="visitas" />
+                </th>
+                <th onClick={() => handleSort('fecha')} style={{ cursor: 'pointer', userSelect: 'none', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                  Registro <SortIcon column="fecha" />
+                </th>
                 <th></th>
               </tr>
             </thead>
