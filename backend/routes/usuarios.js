@@ -75,4 +75,65 @@ router.get('/:id/actividad', requireRol('admin'), async (req, res) => {
   }
 });
 
+// GET /api/usuarios/:id/historial — timeline cronológico de actividad
+router.get('/:id/historial', requireRol('admin'), async (req, res) => {
+  const { limit = 50, offset = 0 } = req.query;
+  try {
+    const { rows: clientes } = await pool.query(
+      `SELECT 
+        'cliente_registrado' AS tipo,
+        c.id AS referencia_id,
+        c.nombre_completo AS detalle,
+        c.monto_acumulado AS monto,
+        c.fecha_registro AS fecha
+       FROM clientes c
+       WHERE c.creado_por = $1
+       ORDER BY c.fecha_registro DESC`,
+      [req.params.id]
+    );
+
+    const { rows: ingresos } = await pool.query(
+      `SELECT 
+        'ingreso_registrado' AS tipo,
+        h.id AS referencia_id,
+        c.nombre_completo AS cliente_nombre,
+        c.id AS cliente_id,
+        h.monto,
+        h.nota,
+        h.fecha
+       FROM historial_ingresos h
+       JOIN clientes c ON h.cliente_id = c.id
+       WHERE h.registrado_por = $1
+       ORDER BY h.fecha DESC`,
+      [req.params.id]
+    );
+
+    const eventos = [...clientes.map(c => ({
+      tipo: c.tipo,
+      referencia_id: c.referencia_id,
+      cliente: c.detalle,
+      cliente_id: c.referencia_id,
+      monto: c.monto,
+      fecha: c.fecha,
+      descripcion: `Registró a ${c.detalle}`
+    })), ...ingresos.map(i => ({
+      tipo: i.tipo,
+      referencia_id: i.referencia_id,
+      cliente: i.cliente_nombre,
+      cliente_id: i.cliente_id,
+      monto: i.monto,
+      nota: i.nota,
+      fecha: i.fecha,
+      descripcion: `Registró ingreso de ${new Intl.NumberFormat('es-BO', { style: 'currency', currency: 'BOB' }).format(i.monto || 0)} a ${i.cliente_nombre}`
+    }))]
+      .sort((a, b) => new Date(b.fecha) - new Date(a.fecha))
+      .slice(parseInt(offset), parseInt(offset) + parseInt(limit));
+
+    res.json({ eventos });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error del servidor' });
+  }
+});
+
 export default router;
