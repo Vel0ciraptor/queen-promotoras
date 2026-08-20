@@ -44,8 +44,12 @@ export default function ClienteDetalleModal({ cliente: initialCliente, onClose, 
       const { data } = await api.post(`/clientes/${cliente.id}/ingreso`, { monto: m, nota });
       onIngresoRegistrado(data.cliente, data.nuevas_notificaciones || []);
       toast.success(`Ingreso de ${fmt(m)} registrado`);
-      if (data.alertas_creadas && data.alertas_creadas.length > 0) {
-        setAlertasCreadas(data.alertas_creadas);
+      const todasLasAlertas = [
+        ...(data.nuevas_notificaciones || []).filter(a => a.tipo === 'lograda'),
+        ...(data.alertas_creadas || []).map(a => ({ ...a, tipo: 'progreso' }))
+      ];
+      if (todasLasAlertas.length > 0) {
+        setAlertasCreadas(todasLasAlertas);
       }
     } catch (err) {
       toast.error(err.response?.data?.error || 'Error');

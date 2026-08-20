@@ -103,9 +103,18 @@ export default function PromotoraPage() {
   };
 
   const handleIngresoRegistrado = (clienteActualizado, nuevasNotifs = []) => {
-    setClientes(prev => prev.map(c => c.id === clienteActualizado.id ? { ...c, ...clienteActualizado } : c));
+    setClientes(prev => prev.map(c => c.id === clienteActualizado.id ? {
+      ...c,
+      ...clienteActualizado,
+      descuentos_info: clienteActualizado.descuentos_info ?? c.descuentos_info,
+      descuentos_activos: clienteActualizado.descuentos_activos ?? c.descuentos_activos
+    } : c));
     if (nuevasNotifs.length) {
-      nuevasNotifs.forEach(d => toast.crown(`¡${clienteActualizado.nombre_completo} alcanzó ${d.porcentaje}% OFF!`));
+      nuevasNotifs.forEach(d => {
+        if (d.tipo === 'lograda') {
+          toast.crown(`¡${clienteActualizado.nombre_completo} alcanzó ${d.porcentaje}% OFF!`);
+        }
+      });
       chimeRef.current?.play?.().catch(() => {});
     }
     setSelected(null);

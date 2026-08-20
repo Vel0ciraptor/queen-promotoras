@@ -456,9 +456,9 @@ async function verificarDescuentos(client, cliente, montoNuevo) {
         `INSERT INTO notificaciones_descuento (cliente_id, descuento_id) VALUES ($1, $2)`,
         [cliente.id, d.id]
       );
-      nuevas.push(d);
 
       // Crear alerta de felicitación (usar SAVEPOINT para no abortar la transacción)
+      let alertaLograda = null;
       await client.query('SAVEPOINT alerta_felicitar');
       try {
         const { rows: yaTieneAlerta } = await client.query(
@@ -466,17 +466,34 @@ async function verificarDescuentos(client, cliente, montoNuevo) {
           [cliente.id, d.id]
         );
         if (!yaTieneAlerta.length) {
-          await client.query(
+          const { rows } = await client.query(
             `INSERT INTO alertas_descuento (cliente_id, descuento_id, promotora_id, monto_faltante, porcentaje_descuento, nombre_descuento, tipo)
-             VALUES ($1, $2, $3, 0, $4, $5, 'lograda')`,
+             VALUES ($1, $2, $3, 0, $4, $5, 'lograda') RETURNING *`,
             [cliente.id, d.id, cliente.creado_por, d.porcentaje, d.nombre]
           );
+          alertaLograda = rows[0];
+        } else {
+          const { rows: existing } = await client.query(
+            `SELECT * FROM alertas_descuento WHERE id = $1`, [yaTieneAlerta[0].id]
+          );
+          alertaLograda = existing[0];
         }
       } catch {
         await client.query('ROLLBACK TO SAVEPOINT alerta_felicitar');
       } finally {
         await client.query('RELEASE SAVEPOINT alerta_felicitar');
       }
+
+      nuevas.push({
+        id: alertaLograda?.id || null,
+        cliente_id: cliente.id,
+        descuento_id: d.id,
+        nombre_descuento: d.nombre,
+        porcentaje: d.porcentaje,
+        monto_faltante: 0,
+        tipo: 'lograda',
+        alerta_id: alertaLograda?.id || null
+      });
     }
   }
   return nuevas;
