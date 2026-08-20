@@ -458,17 +458,21 @@ async function verificarDescuentos(client, cliente, montoNuevo) {
       );
       nuevas.push(d);
 
-      // Crear alerta de felicitación para la promotora
-      const { rows: yaTieneAlerta } = await client.query(
-        `SELECT id FROM alertas_descuento WHERE cliente_id = $1 AND descuento_id = $2 AND tipo = 'lograda' AND enviada = false`,
-        [cliente.id, d.id]
-      );
-      if (!yaTieneAlerta.length) {
-        await client.query(
-          `INSERT INTO alertas_descuento (cliente_id, descuento_id, promotora_id, monto_faltante, porcentaje_descuento, nombre_descuento, tipo)
-           VALUES ($1, $2, $3, 0, $4, $5, 'lograda')`,
-          [cliente.id, d.id, cliente.creado_por, d.porcentaje, d.nombre]
+      // Crear alerta de felicitación (resiliente: si falla no rompe el flujo)
+      try {
+        const { rows: yaTieneAlerta } = await client.query(
+          `SELECT id FROM alertas_descuento WHERE cliente_id = $1 AND descuento_id = $2 AND tipo = 'lograda' AND enviada = false`,
+          [cliente.id, d.id]
         );
+        if (!yaTieneAlerta.length) {
+          await client.query(
+            `INSERT INTO alertas_descuento (cliente_id, descuento_id, promotora_id, monto_faltante, porcentaje_descuento, nombre_descuento, tipo)
+             VALUES ($1, $2, $3, 0, $4, $5, 'lograda')`,
+            [cliente.id, d.id, cliente.creado_por, d.porcentaje, d.nombre]
+          );
+        }
+      } catch {
+        // Si la columna tipo no existe o la tabla alertas_descuento no existe, ignorar
       }
     }
   }
@@ -477,33 +481,38 @@ async function verificarDescuentos(client, cliente, montoNuevo) {
 
 // Función auxiliar: crear alertas para clientas cercanas a alcanzar un descuento
 async function crearAlertasCercanas(client, cliente) {
-  const montoTotal = parseFloat(cliente.monto_acumulado);
-  const { rows: descuentos } = await client.query(
-    `SELECT * FROM descuentos WHERE activo = true AND alertas_activas = true AND alerta_distancia > 0`
-  );
+  try {
+    const montoTotal = parseFloat(cliente.monto_acumulado);
+    const { rows: descuentos } = await client.query(
+      `SELECT * FROM descuentos WHERE activo = true AND alertas_activas = true AND alerta_distancia > 0`
+    );
 
-  const nuevas = [];
-  for (const d of descuentos) {
-    const montoMinimo = parseFloat(d.monto_minimo_requerido);
-    const distancia = parseFloat(d.alerta_distancia);
-    const montoFaltante = montoMinimo - montoTotal;
+    const nuevas = [];
+    for (const d of descuentos) {
+      const montoMinimo = parseFloat(d.monto_minimo_requerido);
+      const distancia = parseFloat(d.alerta_distancia);
+      const montoFaltante = montoMinimo - montoTotal;
 
-    if (montoFaltante > 0 && montoFaltante <= distancia) {
-      const { rows: existe } = await client.query(
-        `SELECT id FROM alertas_descuento WHERE cliente_id = $1 AND descuento_id = $2 AND enviada = false`,
-        [cliente.id, d.id]
-      );
-      if (!existe.length) {
-        const { rows } = await client.query(
-          `INSERT INTO alertas_descuento (cliente_id, descuento_id, promotora_id, monto_faltante, porcentaje_descuento, nombre_descuento)
-           VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-          [cliente.id, d.id, cliente.creado_por, montoFaltante, d.porcentaje, d.nombre]
+      if (montoFaltante > 0 && montoFaltante <= distancia) {
+        const { rows: existe } = await client.query(
+          `SELECT id FROM alertas_descuento WHERE cliente_id = $1 AND descuento_id = $2 AND enviada = false`,
+          [cliente.id, d.id]
         );
-        nuevas.push(rows[0]);
+        if (!existe.length) {
+          const { rows } = await client.query(
+            `INSERT INTO alertas_descuento (cliente_id, descuento_id, promotora_id, monto_faltante, porcentaje_descuento, nombre_descuento)
+             VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+            [cliente.id, d.id, cliente.creado_por, montoFaltante, d.porcentaje, d.nombre]
+          );
+          nuevas.push(rows[0]);
+        }
       }
     }
+    return nuevas;
+  } catch {
+    // Si la tabla alertas_descuento no existe, retornar vacío
+    return [];
   }
-  return nuevas;
 }
 
 export default router;

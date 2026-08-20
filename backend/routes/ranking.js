@@ -8,7 +8,11 @@ router.use(authMiddleware);
 // GET /api/ranking — Top clientas por monto acumulado (global)
 router.get('/', async (req, res) => {
   try {
-    const { rows: coronas } = await pool.query('SELECT * FROM coronas ORDER BY orden ASC');
+    let coronas = [];
+    try {
+      const coronasRes = await pool.query('SELECT * FROM coronas ORDER BY orden ASC');
+      coronas = coronasRes.rows;
+    } catch { /* tabla coronas no existe aún */ }
 
     const { rows: clientas } = await pool.query(
       `SELECT c.id, c.nombre_completo, c.celular, c.monto_acumulado, c.visitas_totales, c.fecha_registro,
@@ -44,7 +48,11 @@ router.get('/', async (req, res) => {
 // GET /api/ranking/mi-equipo — Solo clientas registradas por la promotora logueada
 router.get('/mi-equipo', async (req, res) => {
   try {
-    const { rows: coronas } = await pool.query('SELECT * FROM coronas ORDER BY orden ASC');
+    let coronas = [];
+    try {
+      const coronasRes = await pool.query('SELECT * FROM coronas ORDER BY orden ASC');
+      coronas = coronasRes.rows;
+    } catch { /* tabla coronas no existe aún */ }
 
     const { rows: clientas } = await pool.query(
       `SELECT c.id, c.nombre_completo, c.celular, c.monto_acumulado, c.visitas_totales, c.fecha_registro,
@@ -82,8 +90,7 @@ router.get('/coronas', async (req, res) => {
     const { rows } = await pool.query('SELECT * FROM coronas ORDER BY orden ASC');
     res.json({ coronas: rows });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Error del servidor' });
+    res.json({ coronas: [] });
   }
 });
 
@@ -102,8 +109,8 @@ router.get('/alertas', async (req, res) => {
     );
     res.json({ alertas: rows });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Error del servidor' });
+    // Si la tabla alertas_descuento no existe, retornar vacío
+    res.json({ alertas: [] });
   }
 });
 
@@ -132,8 +139,7 @@ router.get('/proximas-alertas', async (req, res) => {
     );
     res.json({ proximas: rows });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Error del servidor' });
+    res.json({ proximas: [] });
   }
 });
 
