@@ -301,6 +301,10 @@ export default function RankingPanel() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
+  useEffect(() => {
+    if (tab === 'alertas') fetchData();
+  }, [tab, fetchData]);
+
   const fetchMiEquipo = useCallback(async () => {
     try {
       const { data } = await api.get('/ranking/mi-equipo');
@@ -318,6 +322,7 @@ export default function RankingPanel() {
     try {
       await api.post(`/ranking/alertas/${alertaId}/enviar`);
       setAlertas(prev => prev.filter(a => a.id !== alertaId));
+      setTimeout(() => fetchData(), 500);
     } catch {
       // silent
     }
