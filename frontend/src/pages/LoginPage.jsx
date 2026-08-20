@@ -87,7 +87,7 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <p style={{ textAlign: 'center', marginTop: '1.5rem', fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)' }}>
+        <p style={{ textAlign: 'center', marginTop: '1.5rem', fontSize: '0.8rem', color: 'rgba(0,0,0,0.35)' }}>
           Queen Promotoras © {new Date().getFullYear()}
         </p>
       </div>
