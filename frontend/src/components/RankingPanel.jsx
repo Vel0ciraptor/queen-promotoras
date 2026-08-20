@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import api from '../lib/api';
-import { Users, Bell, MessageCircle, Trophy, Star, Info, X } from 'lucide-react';
+import { Users, Bell, MessageCircle, Trophy, Star, Info, X, Send } from 'lucide-react';
 
 const CORONAS_NIVELES = [
   { orden: 1, nombre: 'Rosa Suave',    monto: 500,    color: 'linear-gradient(135deg, #FFD1E3, #FF6FA5)', textColor: '#7A0033', icono: '👑', desc: 'Al acumular 500 Bs. en compras' },
@@ -57,6 +57,72 @@ function CoronasInfoModal({ onClose }) {
               </div>
             </div>
           ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function WhatsAppEditorModal({ celular, nombre, mensajeInicial, esFelicidad, onClose, onEnviar }) {
+  const [mensaje, setMensaje] = useState(mensajeInicial);
+
+  const handleSend = () => {
+    const cell = celular?.replace(/\D/g, '');
+    if (!cell) return;
+    const msg = encodeURIComponent(mensaje);
+    window.open(`https://wa.me/${cell}?text=${msg}`, '_blank');
+    onEnviar();
+  };
+
+  return (
+    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal-sheet">
+        <div className="modal-handle" />
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+          <h2 style={{ color: esFelicidad ? '#16A34A' : 'var(--pink-strong)', fontSize: '1.1rem', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            {esFelicidad ? '🎉 Felicitar a' : '📱 Enviar a'} {nombre}
+          </h2>
+          <button className="btn btn-ghost btn-icon" onClick={onClose} style={{ minHeight: 'unset' }}><X size={18} /></button>
+        </div>
+
+        <div style={{ marginBottom: '0.75rem' }}>
+          <label className="form-label">📱 Celular</label>
+          <div style={{
+            padding: '0.6rem 0.875rem', borderRadius: '0.75rem',
+            background: 'var(--surface2)', fontSize: '0.88rem', fontWeight: 700,
+            color: 'var(--text-primary)'
+          }}>
+            {celular || 'Sin celular'}
+          </div>
+        </div>
+
+        <div className="form-group" style={{ marginBottom: '1rem' }}>
+          <label className="form-label">✏️ Mensaje (puedes editarlo antes de enviar)</label>
+          <textarea
+            className="input"
+            rows={6}
+            value={mensaje}
+            onChange={e => setMensaje(e.target.value)}
+            style={{ resize: 'vertical', minHeight: '120px', lineHeight: 1.5, fontSize: '0.88rem' }}
+          />
+          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+            {mensaje.length} caracteres
+          </span>
+        </div>
+
+        <div style={{ display: 'flex', gap: '0.75rem' }}>
+          <button className="btn btn-ghost" style={{ flex: 1 }} onClick={onClose}>Cancelar</button>
+          <button
+            className="btn"
+            style={{
+              flex: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem',
+              background: esFelicidad ? '#22C55E' : '#25D366', color: '#fff',
+              fontWeight: 700, fontSize: '0.9rem'
+            }}
+            onClick={handleSend}
+          >
+            <Send size={16} /> Enviar por WhatsApp
+          </button>
         </div>
       </div>
     </div>
@@ -140,22 +206,12 @@ function RankingItem({ cliente, onAlerta }) {
   );
 }
 
-function AlertaItem({ alerta, onEnviar }) {
+function AlertaItem({ alerta, onOpenEditor }) {
   const esLograda = alerta.tipo === 'lograda';
 
-  const handleWhatsApp = () => {
-    const celular = alerta.cliente_celular?.replace(/\D/g, '');
-    if (!celular) return;
-    const mensaje = esLograda
-      ? encodeURIComponent(
-          `¡Felicidades ${alerta.cliente_nombre}! 🎉👑\nDe la tienda Queen Style te informamos que ya alcanzaste tu descuento de ${alerta.porcentaje}% OFF por el descuento "${alerta.nombre_descuento}".\n¡Ven y disfrútalo! 💖`
-        )
-      : encodeURIComponent(
-          `¡Hola ${alerta.cliente_nombre}! 🌟\nDe la tienda Queen Style te informamos que estás a solo ${fmt(alerta.monto_faltante)} de alcanzar tu descuento de ${alerta.porcentaje}% OFF.\n¡No dejes pasar esta oportunidad! 💖`
-        );
-    window.open(`https://wa.me/${celular}?text=${mensaje}`, '_blank');
-    onEnviar(alerta.id);
-  };
+  const mensaje = esLograda
+    ? `¡Felicidades ${alerta.cliente_nombre}! 🎉👑\nDe la tienda Queen Style te informamos que ya alcanzaste tu descuento de ${alerta.porcentaje}% OFF por el descuento "${alerta.nombre_descuento}".\n¡Ven y disfrútalo! 💖`
+    : `¡Hola ${alerta.cliente_nombre}! 🌟\nDe la tienda Queen Style te informamos que estás a solo ${fmt(alerta.monto_faltante)} de alcanzar tu descuento de ${alerta.porcentaje}% OFF.\n¡No dejes pasar esta oportunidad! 💖`;
 
   return (
     <div className="whatsapp-alert-card" style={esLograda ? {
@@ -199,7 +255,13 @@ function AlertaItem({ alerta, onEnviar }) {
         </div>
         <button
           className="btn-whatsapp"
-          onClick={handleWhatsApp}
+          onClick={() => onOpenEditor({
+            celular: alerta.cliente_celular,
+            nombre: alerta.cliente_nombre,
+            mensaje,
+            esFelicidad: esLograda,
+            alertaId: alerta.id
+          })}
           style={esLograda ? { background: '#22C55E', flexShrink: 0 } : { flexShrink: 0 }}
         >
           <MessageCircle size={14} /> {esLograda ? 'Felicitar' : 'WhatsApp'}
@@ -217,6 +279,7 @@ export default function RankingPanel() {
   const [proximas, setProximas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showInfo, setShowInfo] = useState(false);
+  const [editingWhatsApp, setEditingWhatsApp] = useState(null);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -372,7 +435,7 @@ export default function RankingPanel() {
                   </h3>
                   <div className="gap-stack">
                     {alertas.filter(a => a.tipo === 'lograda').map(a => (
-                      <AlertaItem key={a.id} alerta={a} onEnviar={handleEnviarAlerta} />
+                      <AlertaItem key={a.id} alerta={a} onOpenEditor={setEditingWhatsApp} />
                     ))}
                   </div>
                 </div>
@@ -386,7 +449,7 @@ export default function RankingPanel() {
                   </h3>
                   <div className="gap-stack">
                     {alertas.filter(a => a.tipo !== 'lograda').map(a => (
-                      <AlertaItem key={a.id} alerta={a} onEnviar={handleEnviarAlerta} />
+                      <AlertaItem key={a.id} alerta={a} onOpenEditor={setEditingWhatsApp} />
                     ))}
                   </div>
                 </div>
@@ -421,14 +484,13 @@ export default function RankingPanel() {
                           {p.celular && (
                             <button
                               className="btn-whatsapp"
-                              onClick={() => {
-                                const cell = p.celular?.replace(/\D/g, '');
-                                if (!cell) return;
-                                const msg = encodeURIComponent(
-                                  `¡Hola ${p.nombre_completo}! 🌟\nDe la tienda Queen Style te informamos que estás a solo ${fmt(p.monto_faltante)} de alcanzar tu descuento de ${p.porcentaje}% OFF.\n¡No dejes pasar esta oportunidad! 💖`
-                                );
-                                window.open(`https://wa.me/${cell}?text=${msg}`, '_blank');
-                              }}
+                              onClick={() => setEditingWhatsApp({
+                                celular: p.celular,
+                                nombre: p.nombre_completo,
+                                mensaje: `¡Hola ${p.nombre_completo}! 🌟\nDe la tienda Queen Style te informamos que estás a solo ${fmt(p.monto_faltante)} de alcanzar tu descuento de ${p.porcentaje}% OFF.\n¡No dejes pasar esta oportunidad! 💖`,
+                                esFelicidad: false,
+                                alertaId: null
+                              })}
                             >
                               <MessageCircle size={14} /> WhatsApp
                             </button>
@@ -455,6 +517,21 @@ export default function RankingPanel() {
 
       {/* Modal info coronas */}
       {showInfo && <CoronasInfoModal onClose={() => setShowInfo(false)} />}
+
+      {/* Modal editor de mensaje WhatsApp */}
+      {editingWhatsApp && (
+        <WhatsAppEditorModal
+          celular={editingWhatsApp.celular}
+          nombre={editingWhatsApp.nombre}
+          mensajeInicial={editingWhatsApp.mensaje}
+          esFelicidad={editingWhatsApp.esFelicidad}
+          onClose={() => setEditingWhatsApp(null)}
+          onEnviar={() => {
+            if (editingWhatsApp.alertaId) handleEnviarAlerta(editingWhatsApp.alertaId);
+            setEditingWhatsApp(null);
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -12,7 +12,7 @@ function DescuentoModal({ onClose, onGuardado }) {
     nombre: '', porcentaje: '', monto_minimo_requerido: '',
     vigencia_valor: '', vigencia_unidad: 'meses',
     duracion_activo_valor: '', duracion_activo_unidad: 'dias',
-    alerta_distancia: '', alertas_activas: true
+    alerta_distancia: '200', alertas_activas: true
   });
   const [loading, setLoading] = useState(false);
   const set = k => e => setForm(f => ({ ...f, [k]: e.target.value }));
@@ -130,7 +130,7 @@ function EditarDescuentoModal({ descuento, onClose, onGuardado }) {
     vigencia_unidad: descuento.vigencia_unidad || 'meses',
     duracion_activo_valor: descuento.duracion_activo_valor || '',
     duracion_activo_unidad: descuento.duracion_activo_unidad || 'dias',
-    alerta_distancia: descuento.alerta_distancia || '',
+    alerta_distancia: descuento.alerta_distancia || '200',
     alertas_activas: descuento.alertas_activas !== false,
   });
   const [loading, setLoading] = useState(false);
