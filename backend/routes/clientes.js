@@ -458,7 +458,8 @@ async function verificarDescuentos(client, cliente, montoNuevo) {
       );
       nuevas.push(d);
 
-      // Crear alerta de felicitación (resiliente: si falla no rompe el flujo)
+      // Crear alerta de felicitación (usar SAVEPOINT para no abortar la transacción)
+      await client.query('SAVEPOINT alerta_felicitar');
       try {
         const { rows: yaTieneAlerta } = await client.query(
           `SELECT id FROM alertas_descuento WHERE cliente_id = $1 AND descuento_id = $2 AND tipo = 'lograda' AND enviada = false`,
@@ -472,7 +473,9 @@ async function verificarDescuentos(client, cliente, montoNuevo) {
           );
         }
       } catch {
-        // Si la columna tipo no existe o la tabla alertas_descuento no existe, ignorar
+        await client.query('ROLLBACK TO SAVEPOINT alerta_felicitar');
+      } finally {
+        await client.query('RELEASE SAVEPOINT alerta_felicitar');
       }
     }
   }
@@ -481,6 +484,7 @@ async function verificarDescuentos(client, cliente, montoNuevo) {
 
 // Función auxiliar: crear alertas para clientas cercanas a alcanzar un descuento
 async function crearAlertasCercanas(client, cliente) {
+  await client.query('SAVEPOINT alertas_cercanas');
   try {
     const montoTotal = parseFloat(cliente.monto_acumulado);
     const { rows: descuentos } = await client.query(
@@ -508,9 +512,10 @@ async function crearAlertasCercanas(client, cliente) {
         }
       }
     }
+    await client.query('RELEASE SAVEPOINT alertas_cercanas');
     return nuevas;
   } catch {
-    // Si la tabla alertas_descuento no existe, retornar vacío
+    await client.query('ROLLBACK TO SAVEPOINT alertas_cercanas');
     return [];
   }
 }

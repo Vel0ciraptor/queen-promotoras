@@ -85,6 +85,7 @@ export async function runMigrations() {
       console.log('ℹ️ Base de datos ya configurada. Verificando migraciones pendientes...');
 
       // Ejecutar migración de ranking si la tabla coronas no existe
+      // O si falta la columna tipo en alertas_descuento
       const { rows: coronasExists } = await client.query(`
         SELECT EXISTS (
           SELECT FROM information_schema.tables
@@ -92,7 +93,16 @@ export async function runMigrations() {
         );
       `);
 
-      if (!coronasExists[0]?.exists) {
+      const { rows: tipoExists } = await client.query(`
+        SELECT EXISTS (
+          SELECT FROM information_schema.columns
+          WHERE table_schema = 'public' AND table_name = 'alertas_descuento' AND column_name = 'tipo'
+        );
+      `);
+
+      const needsMigration = !coronasExists[0]?.exists || !tipoExists[0]?.exists;
+
+      if (needsMigration) {
         console.log('📌 Ejecutando migración: ranking + alertas...');
         const migrationPath = path.join(__dirname, 'migration_ranking.sql');
         const sql = fs.readFileSync(migrationPath, 'utf8');
