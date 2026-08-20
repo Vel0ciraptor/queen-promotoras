@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Crown, Plus } from 'lucide-react';
+import { X, Crown, Plus, MessageCircle } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 import api from '../lib/api';
 import AlertaDescuentoModal from './AlertaDescuentoModal';
@@ -114,16 +114,39 @@ export default function ClienteDetalleModal({ cliente: initialCliente, onClose, 
         ) : tab === 'info' ? (
           <form onSubmit={handleIngreso} className="gap-stack">
             {notifs.length > 0 && (
-              <div style={{ background: 'linear-gradient(135deg,#FFF3C4,#FFE08A)', borderRadius: '1rem', padding: '0.875rem 1rem', display:'flex', gap:'0.75rem', alignItems:'flex-start' }}>
-                <Crown size={18} style={{ color: '#7A5200', flexShrink: 0, marginTop: 1 }} />
-                <div>
+              <div style={{ background: 'linear-gradient(135deg,#FFF3C4,#FFE08A)', borderRadius: '1rem', padding: '0.875rem 1rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                  <Crown size={18} style={{ color: '#7A5200', flexShrink: 0 }} />
                   <div style={{ fontWeight: 800, fontSize: '0.9rem', color: '#7A5200' }}>¡Descuento disponible!</div>
-                  {notifs.map(n => (
-                    <div key={n.id} style={{ fontSize: '0.82rem', color: '#5C3A00', marginTop: '0.2rem' }}>
-                      {n.descuento_nombre}: {n.porcentaje}% OFF
-                    </div>
-                  ))}
                 </div>
+                {notifs.map(n => (
+                  <div key={n.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.35rem 0', borderTop: '1px solid rgba(122,82,0,0.1)' }}>
+                    <div style={{ fontSize: '0.82rem', color: '#5C3A00' }}>
+                      {n.descuento_nombre}: <strong>{n.porcentaje}% OFF</strong>
+                    </div>
+                    {cliente.celular && (
+                      <button
+                        onClick={() => {
+                          const cell = cliente.celular?.replace(/\D/g, '');
+                          if (!cell) return;
+                          const msg = encodeURIComponent(
+                            `¡Felicidades ${cliente.nombre_completo}! 🎉👑\nDe la tienda Queen Style te informamos que ya alcanzaste tu descuento de ${n.porcentaje}% OFF por "${n.descuento_nombre}".\n¡Ven y disfrútalo! 💖`
+                          );
+                          window.open(`https://wa.me/${cell}?text=${msg}`, '_blank');
+                          api.patch(`/clientes/${cliente.id}/notificaciones/visto`).catch(() => {});
+                        }}
+                        style={{
+                          display: 'inline-flex', alignItems: 'center', gap: '0.3rem',
+                          background: '#25D366', color: '#fff', border: 'none', borderRadius: '99px',
+                          padding: '0.3rem 0.6rem', fontSize: '0.72rem', fontWeight: 700,
+                          cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0
+                        }}
+                      >
+                        <MessageCircle size={12} /> Avisar
+                      </button>
+                    )}
+                  </div>
+                ))}
               </div>
             )}
             <div className="form-group">
