@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, X, Trash2 } from 'lucide-react';
+import { Plus, X, Trash2, Pencil } from 'lucide-react';
 import api from '../../lib/api';
 import { useToast } from '../../context/ToastContext';
 
@@ -120,17 +120,139 @@ function DescuentoModal({ onClose, onGuardado }) {
   );
 }
 
+function EditarDescuentoModal({ descuento, onClose, onGuardado }) {
+  const toast = useToast();
+  const [form, setForm] = useState({
+    nombre: descuento.nombre || '',
+    porcentaje: descuento.porcentaje || '',
+    monto_minimo_requerido: descuento.monto_minimo_requerido || '',
+    vigencia_valor: descuento.vigencia_valor || '',
+    vigencia_unidad: descuento.vigencia_unidad || 'meses',
+    duracion_activo_valor: descuento.duracion_activo_valor || '',
+    duracion_activo_unidad: descuento.duracion_activo_unidad || 'dias',
+    alerta_distancia: descuento.alerta_distancia || '',
+    alertas_activas: descuento.alertas_activas !== false,
+  });
+  const [loading, setLoading] = useState(false);
+  const set = k => e => setForm(f => ({ ...f, [k]: e.target.value }));
+
+  const handleSubmit = async e => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const { data } = await api.put(`/descuentos/${descuento.id}`, form);
+      onGuardado(data.descuento);
+      toast.success('Descuento actualizado ✨');
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Error');
+    } finally { setLoading(false); }
+  };
+
+  return (
+    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal-sheet">
+        <div className="modal-handle"/>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'1.25rem' }}>
+          <h2 style={{ color:'var(--pink-strong)', fontSize:'1.2rem' }}>✏️ Editar descuento</h2>
+          <button className="btn btn-ghost btn-icon" onClick={onClose} style={{ minHeight:'unset' }}><X size={18}/></button>
+        </div>
+        <form onSubmit={handleSubmit} className="gap-stack">
+          <div className="form-group">
+            <label className="form-label">Nombre del descuento</label>
+            <input className="input" placeholder="Ej: 15% por fidelidad" value={form.nombre} onChange={set('nombre')} required />
+          </div>
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0.75rem' }}>
+            <div className="form-group">
+              <label className="form-label">Porcentaje (%)</label>
+              <input className="input" type="number" min="1" max="100" step="0.01" placeholder="15" value={form.porcentaje} onChange={set('porcentaje')} required />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Monto mínimo (Bs.)</label>
+              <input className="input" type="number" min="0" step="0.01" placeholder="500" value={form.monto_minimo_requerido} onChange={set('monto_minimo_requerido')} required />
+            </div>
+          </div>
+          <div>
+            <label className="form-label" style={{ marginBottom:'0.375rem', display:'block' }}>Vigencia del descuento</label>
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0.75rem' }}>
+              <input className="input" type="number" min="1" placeholder="3" value={form.vigencia_valor} onChange={set('vigencia_valor')} required />
+              <select className="input" value={form.vigencia_unidad} onChange={set('vigencia_unidad')}>
+                <option value="meses">Meses</option>
+                <option value="años">Años</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label className="form-label" style={{ marginBottom:'0.375rem', display:'block' }}>Duración activo</label>
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0.75rem' }}>
+              <input className="input" type="number" min="1" placeholder="30" value={form.duracion_activo_valor} onChange={set('duracion_activo_valor')} required />
+              <select className="input" value={form.duracion_activo_unidad} onChange={set('duracion_activo_unidad')}>
+                <option value="dias">Días</option>
+                <option value="meses">Meses</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Configuración de alertas */}
+          <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+              <label className="form-label" style={{ marginBottom: 0 }}>🔔 Alertas a promotoras</label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={form.alertas_activas}
+                  onChange={e => setForm(f => ({ ...f, alertas_activas: e.target.checked }))}
+                  style={{ width: 16, height: 16, accentColor: 'var(--pink-strong)' }}
+                />
+                <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-muted)' }}>
+                  {form.alertas_activas ? 'Activas' : 'Inactivas'}
+                </span>
+              </label>
+            </div>
+            {form.alertas_activas && (
+              <div className="form-group">
+                <label className="form-label">Distancia de alerta (Bs.)</label>
+                <input
+                  className="input"
+                  type="number"
+                  min="1"
+                  step="0.01"
+                  placeholder="Ej: 100 (alertar cuando falten 100 Bs.)"
+                  value={form.alerta_distancia}
+                  onChange={set('alerta_distancia')}
+                />
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
+                  La promotora recibirá una alerta cuando una clienta esté a esta distancia de alcanzar el descuento
+                </span>
+              </div>
+            )}
+          </div>
+
+          <div style={{ display:'flex', gap:'0.75rem', marginTop:'0.25rem' }}>
+            <button type="button" className="btn btn-ghost" style={{ flex:1 }} onClick={onClose}>Cancelar</button>
+            <button type="submit" className="btn btn-primary" style={{ flex:2 }} disabled={loading}>
+              {loading ? '⏳ Guardando...' : '💾 Guardar cambios'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminDescuentos() {
   const toast = useToast();
   const [descuentos, setDescuentos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [editando, setEditando] = useState(null);
 
   useEffect(() => {
     api.get('/descuentos').then(({ data }) => setDescuentos(data.descuentos)).catch(() => toast.error('Error')).finally(() => setLoading(false));
   }, []);
 
   const handleGuardado = d => { setDescuentos(prev => [d, ...prev]); setShowModal(false); };
+
+  const handleEditado = d => { setDescuentos(prev => prev.map(x => x.id === d.id ? d : x)); setEditando(null); };
 
   const handleToggle = async d => {
     try {
@@ -168,7 +290,7 @@ export default function AdminDescuentos() {
             <div>
               <h2 style={{ fontWeight:800, fontSize:'1rem', color:'var(--text-secondary)', marginBottom:'0.75rem' }}>✅ Activos ({activos.length})</h2>
               <div className="gap-stack">
-                {activos.map(d => <DescuentoRow key={d.id} d={d} onToggle={handleToggle} onDelete={handleDelete} />)}
+                {activos.map(d => <DescuentoRow key={d.id} d={d} onToggle={handleToggle} onDelete={handleDelete} onEdit={setEditando} />)}
               </div>
             </div>
           )}
@@ -176,7 +298,7 @@ export default function AdminDescuentos() {
             <div>
               <h2 style={{ fontWeight:800, fontSize:'1rem', color:'var(--text-muted)', marginBottom:'0.75rem' }}>⏳ Expirados / Desactivados ({expirados.length})</h2>
               <div className="gap-stack">
-                {expirados.map(d => <DescuentoRow key={d.id} d={d} onToggle={handleToggle} onDelete={handleDelete} />)}
+                {expirados.map(d => <DescuentoRow key={d.id} d={d} onToggle={handleToggle} onDelete={handleDelete} onEdit={setEditando} />)}
               </div>
             </div>
           )}
@@ -191,11 +313,12 @@ export default function AdminDescuentos() {
       )}
 
       {showModal && <DescuentoModal onClose={() => setShowModal(false)} onGuardado={handleGuardado} />}
+      {editando && <EditarDescuentoModal descuento={editando} onClose={() => setEditando(null)} onGuardado={handleEditado} />}
     </div>
   );
 }
 
-function DescuentoRow({ d, onToggle, onDelete }) {
+function DescuentoRow({ d, onToggle, onDelete, onEdit }) {
   const fmt = n => new Intl.NumberFormat('es-BO', { style: 'currency', currency: 'BOB', minimumFractionDigits: 0 }).format(n || 0);
   return (
     <div className="card" style={{ opacity: d.activo ? 1 : 0.65 }}>
@@ -221,6 +344,15 @@ function DescuentoRow({ d, onToggle, onDelete }) {
           )}
         </div>
         <div style={{ display:'flex', gap:'0.5rem', flexShrink:0 }}>
+          <button
+            className="btn btn-ghost btn-icon"
+            style={{ minHeight:'unset', padding:'0.4rem', color:'var(--pink-strong)' }}
+            onClick={() => onEdit(d)}
+            title="Editar descuento"
+            id={`btn-edit-descuento-${d.id}`}
+          >
+            <Pencil size={15}/>
+          </button>
           <button
             className={`btn btn-ghost btn-icon`}
             style={{ minHeight:'unset', padding:'0.4rem', fontSize:'0.8rem' }}
