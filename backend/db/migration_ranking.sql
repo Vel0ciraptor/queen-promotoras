@@ -70,6 +70,11 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'descuentos' AND column_name = 'alertas_activas') THEN
     ALTER TABLE descuentos ADD COLUMN alertas_activas BOOLEAN DEFAULT true;
   END IF;
+
+  -- Columna: tipo de alerta en alertas_descuento (progreso | lograda)
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'alertas_descuento' AND column_name = 'tipo') THEN
+    ALTER TABLE alertas_descuento ADD COLUMN tipo VARCHAR(20) DEFAULT 'progreso';
+  END IF;
 END $$;
 
 -- ══════════════════════════════════════════════════════════════

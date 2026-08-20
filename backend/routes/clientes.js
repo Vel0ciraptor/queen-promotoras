@@ -32,9 +32,19 @@ router.get('/', async (req, res) => {
     const { rows } = await pool.query(
       `SELECT c.*,
         u.nombre AS creado_por_nombre,
-        (SELECT COUNT(*) FROM notificaciones_descuento nd 
+        (SELECT COUNT(*) FROM notificaciones_descuento nd
          JOIN descuentos d ON nd.descuento_id = d.id
-         WHERE nd.cliente_id = c.id AND d.activo = true AND nd.visto = false) AS descuentos_activos
+         WHERE nd.cliente_id = c.id AND d.activo = true AND nd.visto = false) AS descuentos_activos,
+        COALESCE(
+          (SELECT json_agg(json_build_object(
+            'nombre', d.nombre,
+            'porcentaje', d.porcentaje
+          ))
+          FROM notificaciones_descuento nd
+          JOIN descuentos d ON nd.descuento_id = d.id
+          WHERE nd.cliente_id = c.id AND d.activo = true AND nd.visto = false),
+          '[]'::json
+        ) AS descuentos_info
        FROM clientes c
        LEFT JOIN usuarios u ON c.creado_por = u.id
        WHERE c.nombre_completo ILIKE $1 OR c.carnet_identidad ILIKE $1 OR c.celular ILIKE $1
@@ -447,6 +457,19 @@ async function verificarDescuentos(client, cliente, montoNuevo) {
         [cliente.id, d.id]
       );
       nuevas.push(d);
+
+      // Crear alerta de felicitación para la promotora
+      const { rows: yaTieneAlerta } = await client.query(
+        `SELECT id FROM alertas_descuento WHERE cliente_id = $1 AND descuento_id = $2 AND tipo = 'lograda' AND enviada = false`,
+        [cliente.id, d.id]
+      );
+      if (!yaTieneAlerta.length) {
+        await client.query(
+          `INSERT INTO alertas_descuento (cliente_id, descuento_id, promotora_id, monto_faltante, porcentaje_descuento, nombre_descuento, tipo)
+           VALUES ($1, $2, $3, 0, $4, $5, 'lograda')`,
+          [cliente.id, d.id, cliente.creado_por, d.porcentaje, d.nombre]
+        );
+      }
     }
   }
   return nuevas;

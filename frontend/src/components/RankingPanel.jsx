@@ -141,34 +141,68 @@ function RankingItem({ cliente, onAlerta }) {
 }
 
 function AlertaItem({ alerta, onEnviar }) {
+  const esLograda = alerta.tipo === 'lograda';
+
   const handleWhatsApp = () => {
     const celular = alerta.cliente_celular?.replace(/\D/g, '');
     if (!celular) return;
-    const mensaje = encodeURIComponent(
-      `¡Hola ${alerta.cliente_nombre}! 🌟\nDe la tienda Queen Style te informamos que estás a solo ${fmt(alerta.monto_faltante)} de alcanzar tu descuento de ${alerta.porcentaje}% OFF.\n¡No dejes pasar esta oportunidad! 💖`
-    );
+    const mensaje = esLograda
+      ? encodeURIComponent(
+          `¡Felicidades ${alerta.cliente_nombre}! 🎉👑\nDe la tienda Queen Style te informamos que ya alcanzaste tu descuento de ${alerta.porcentaje}% OFF por el descuento "${alerta.nombre_descuento}".\n¡Ven y disfrútalo! 💖`
+        )
+      : encodeURIComponent(
+          `¡Hola ${alerta.cliente_nombre}! 🌟\nDe la tienda Queen Style te informamos que estás a solo ${fmt(alerta.monto_faltante)} de alcanzar tu descuento de ${alerta.porcentaje}% OFF.\n¡No dejes pasar esta oportunidad! 💖`
+        );
     window.open(`https://wa.me/${celular}?text=${mensaje}`, '_blank');
     onEnviar(alerta.id);
   };
 
   return (
-    <div className="whatsapp-alert-card">
+    <div className="whatsapp-alert-card" style={esLograda ? {
+      borderColor: '#22C55E',
+      background: 'linear-gradient(135deg, rgba(34,197,94,0.04), var(--surface))'
+    } : {}}>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.5rem' }}>
         <div style={{ flex: 1 }}>
-          <div style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--text-primary)', marginBottom: '0.25rem' }}>
-            {alerta.cliente_nombre}
-          </div>
-          <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '0.4rem' }}>
-            Le faltan <strong style={{ color: 'var(--pink-strong)' }}>{fmt(alerta.monto_faltante)}</strong> para su descuento
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
-            <span className="alert-proximity">
-              🎁 {alerta.porcentaje}% OFF — {alerta.nombre_descuento}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginBottom: '0.25rem' }}>
+            <span style={{ fontSize: '1.1rem' }}>{esLograda ? '🎉' : '⚡'}</span>
+            <span style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--text-primary)' }}>
+              {alerta.cliente_nombre}
             </span>
           </div>
+          {esLograda ? (
+            <>
+              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '0.4rem' }}>
+                🎉 <strong style={{ color: '#16A34A' }}>¡Alcanzó su descuento!</strong>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                <span className="alert-proximity" style={{
+                  background: 'linear-gradient(135deg, #DCFCE7, #86EFAC)',
+                  color: '#166534', borderColor: '#22C55E'
+                }}>
+                  👑 {alerta.porcentaje}% OFF — {alerta.nombre_descuento}
+                </span>
+              </div>
+            </>
+          ) : (
+            <>
+              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '0.4rem' }}>
+                Le faltan <strong style={{ color: 'var(--pink-strong)' }}>{fmt(alerta.monto_faltante)}</strong> para su descuento
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                <span className="alert-proximity">
+                  🎁 {alerta.porcentaje}% OFF — {alerta.nombre_descuento}
+                </span>
+              </div>
+            </>
+          )}
         </div>
-        <button className="btn-whatsapp" onClick={handleWhatsApp} style={{ flexShrink: 0 }}>
-          <MessageCircle size={14} /> WhatsApp
+        <button
+          className="btn-whatsapp"
+          onClick={handleWhatsApp}
+          style={esLograda ? { background: '#22C55E', flexShrink: 0 } : { flexShrink: 0 }}
+        >
+          <MessageCircle size={14} /> {esLograda ? 'Felicitar' : 'WhatsApp'}
         </button>
       </div>
     </div>
@@ -330,14 +364,28 @@ export default function RankingPanel() {
           {/* TAB: Alertas WhatsApp */}
           {tab === 'alertas' && (
             <>
-              {/* Alertas pendientes (ya creadas) */}
-              {alertas.length > 0 && (
+              {/* Felicitaciones (descuentos alcanzados) */}
+              {alertas.filter(a => a.tipo === 'lograda').length > 0 && (
                 <div>
-                  <h3 style={{ fontWeight: 800, fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                    <Bell size={14} /> Pendientes de enviar ({alertas.length})
+                  <h3 style={{ fontWeight: 800, fontSize: '0.85rem', color: '#16A34A', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                    🎉 ¡Felicitalas! ({alertas.filter(a => a.tipo === 'lograda').length})
                   </h3>
                   <div className="gap-stack">
-                    {alertas.map(a => (
+                    {alertas.filter(a => a.tipo === 'lograda').map(a => (
+                      <AlertaItem key={a.id} alerta={a} onEnviar={handleEnviarAlerta} />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Alertas pendientes (ya creadas) */}
+              {alertas.filter(a => a.tipo !== 'lograda').length > 0 && (
+                <div>
+                  <h3 style={{ fontWeight: 800, fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                    <Bell size={14} /> Cerca del descuento ({alertas.filter(a => a.tipo !== 'lograda').length})
+                  </h3>
+                  <div className="gap-stack">
+                    {alertas.filter(a => a.tipo !== 'lograda').map(a => (
                       <AlertaItem key={a.id} alerta={a} onEnviar={handleEnviarAlerta} />
                     ))}
                   </div>
