@@ -1,5 +1,23 @@
 import { Crown, AlertCircle } from 'lucide-react';
 
+const CORONAS = [
+  { nombre: 'Platinum Rosa', monto: 10000, clase: 'crown-7', icono: '💎' },
+  { nombre: 'Oro Rosa', monto: 7500, clase: 'crown-6', icono: '👑' },
+  { nombre: 'Plata Rosa', monto: 5000, clase: 'crown-5', icono: '👑' },
+  { nombre: 'Bronce Rosa', monto: 3500, clase: 'crown-4', icono: '👑' },
+  { nombre: 'Rosa Intensa', monto: 2000, clase: 'crown-3', icono: '👑' },
+  { nombre: 'Rosa Vibrante', monto: 1000, clase: 'crown-2', icono: '👑' },
+  { nombre: 'Rosa Suave', monto: 500, clase: 'crown-1', icono: '👑' },
+];
+
+function getCorona(monto) {
+  const m = parseFloat(monto) || 0;
+  for (const c of CORONAS) {
+    if (m >= c.monto) return c;
+  }
+  return null;
+}
+
 export default function ClientCard({ cliente, onClick, onCompletar }) {
   const initials = cliente.nombre_completo
     .split(' ')
@@ -10,8 +28,7 @@ export default function ClientCard({ cliente, onClick, onCompletar }) {
 
   const tieneDescuento = parseInt(cliente.descuentos_activos) > 0;
   const tieneInfoFaltante = !cliente.carnet_identidad || !cliente.celular;
-
-  const formatMonto = n => new Intl.NumberFormat('es-BO', { style: 'currency', currency: 'BOB', minimumFractionDigits: 0 }).format(n);
+  const corona = getCorona(cliente.monto_acumulado);
 
   return (
     <button
@@ -27,6 +44,11 @@ export default function ClientCard({ cliente, onClick, onCompletar }) {
           <span style={{ fontWeight: 800, fontSize: '0.97rem', color: 'var(--text-primary)', truncate: true }}>
             {cliente.nombre_completo}
           </span>
+          {corona && (
+            <span className={`crown-badge ${corona.clase}`}>
+              {corona.icono} {corona.nombre}
+            </span>
+          )}
           {tieneDescuento && (
             <span className="badge badge-gold" style={{ animation: 'pulse-gold 2s ease infinite' }}>
               <Crown size={10} /> {cliente.descuentos_activos > 1 ? `${cliente.descuentos_activos} descuentos` : 'Descuento'}

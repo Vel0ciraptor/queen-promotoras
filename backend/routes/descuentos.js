@@ -18,16 +18,16 @@ router.get('/', async (req, res) => {
 
 // POST /api/descuentos — solo admin
 router.post('/', requireRol('admin'), async (req, res) => {
-  const { nombre, porcentaje, monto_minimo_requerido, vigencia_valor, vigencia_unidad, duracion_activo_valor, duracion_activo_unidad } = req.body;
+  const { nombre, porcentaje, monto_minimo_requerido, vigencia_valor, vigencia_unidad, duracion_activo_valor, duracion_activo_unidad, alerta_distancia, alertas_activas } = req.body;
 
   if (!nombre || !porcentaje || !monto_minimo_requerido || !vigencia_valor || !vigencia_unidad || !duracion_activo_valor || !duracion_activo_unidad)
     return res.status(400).json({ error: 'Todos los campos son requeridos' });
 
   try {
     const { rows } = await pool.query(
-      `INSERT INTO descuentos (nombre, porcentaje, monto_minimo_requerido, vigencia_valor, vigencia_unidad, duracion_activo_valor, duracion_activo_unidad)
-       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-      [nombre, porcentaje, monto_minimo_requerido, vigencia_valor, vigencia_unidad, duracion_activo_valor, duracion_activo_unidad]
+      `INSERT INTO descuentos (nombre, porcentaje, monto_minimo_requerido, vigencia_valor, vigencia_unidad, duracion_activo_valor, duracion_activo_unidad, alerta_distancia, alertas_activas)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
+      [nombre, porcentaje, monto_minimo_requerido, vigencia_valor, vigencia_unidad, duracion_activo_valor, duracion_activo_unidad, alerta_distancia || 0, alertas_activas !== false]
     );
     res.status(201).json({ descuento: rows[0] });
   } catch (err) {
@@ -38,7 +38,7 @@ router.post('/', requireRol('admin'), async (req, res) => {
 
 // PUT /api/descuentos/:id — solo admin
 router.put('/:id', requireRol('admin'), async (req, res) => {
-  const { nombre, porcentaje, monto_minimo_requerido, vigencia_valor, vigencia_unidad, duracion_activo_valor, duracion_activo_unidad, activo } = req.body;
+  const { nombre, porcentaje, monto_minimo_requerido, vigencia_valor, vigencia_unidad, duracion_activo_valor, duracion_activo_unidad, activo, alerta_distancia, alertas_activas } = req.body;
   try {
     const { rows } = await pool.query(
       `UPDATE descuentos SET
@@ -49,9 +49,11 @@ router.put('/:id', requireRol('admin'), async (req, res) => {
         vigencia_unidad = COALESCE($5, vigencia_unidad),
         duracion_activo_valor = COALESCE($6, duracion_activo_valor),
         duracion_activo_unidad = COALESCE($7, duracion_activo_unidad),
-        activo = COALESCE($8, activo)
-       WHERE id = $9 RETURNING *`,
-      [nombre, porcentaje, monto_minimo_requerido, vigencia_valor, vigencia_unidad, duracion_activo_valor, duracion_activo_unidad, activo, req.params.id]
+        activo = COALESCE($8, activo),
+        alerta_distancia = COALESCE($9, alerta_distancia),
+        alertas_activas = COALESCE($10, alertas_activas)
+       WHERE id = $11 RETURNING *`,
+      [nombre, porcentaje, monto_minimo_requerido, vigencia_valor, vigencia_unidad, duracion_activo_valor, duracion_activo_unidad, activo, alerta_distancia, alertas_activas, req.params.id]
     );
     if (!rows.length) return res.status(404).json({ error: 'No encontrado' });
     res.json({ descuento: rows[0] });

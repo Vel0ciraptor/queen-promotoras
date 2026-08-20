@@ -10,6 +10,7 @@ import clientesRoutes from './routes/clientes.js';
 import usuariosRoutes from './routes/usuarios.js';
 import descuentosRoutes from './routes/descuentos.js';
 import dashboardRoutes from './routes/dashboard.js';
+import rankingRoutes from './routes/ranking.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -48,6 +49,7 @@ app.use('/api/clientes', clientesRoutes);
 app.use('/api/usuarios', usuariosRoutes);
 app.use('/api/descuentos', descuentosRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/ranking', rankingRoutes);
 
 app.get('/api/health', (req, res) => res.json({ ok: true, time: new Date().toISOString() }));
 

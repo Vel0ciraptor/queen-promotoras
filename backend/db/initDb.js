@@ -82,7 +82,42 @@ export async function runMigrations() {
       await client.query('COMMIT');
       console.log('✅ Esquema inicializado correctamente.');
     } else {
-      console.log('ℹ️ Base de datos ya configurada.');
+      console.log('ℹ️ Base de datos ya configurada. Verificando migraciones pendientes...');
+
+      // Ejecutar migración de ranking si la tabla coronas no existe
+      const { rows: coronasExists } = await client.query(`
+        SELECT EXISTS (
+          SELECT FROM information_schema.tables
+          WHERE table_schema = 'public' AND table_name = 'coronas'
+        );
+      `);
+
+      if (!coronasExists[0]?.exists) {
+        console.log('📌 Ejecutando migración: ranking + alertas...');
+        const migrationPath = path.join(__dirname, 'migration_ranking.sql');
+        const sql = fs.readFileSync(migrationPath, 'utf8');
+        const statements = splitStatements(sql);
+
+        await client.query('BEGIN');
+        for (let i = 0; i < statements.length; i++) {
+          const stmt = statements[i];
+          const clean = stmt.replace(/^--.*$/gm, '').trim();
+          if (!clean) continue;
+          try {
+            await client.query(stmt + ';');
+          } catch (err) {
+            // Si el error es "already exists", ignorar (idempotente)
+            if (err.code === '42710' || err.code === '42P07' || err.message?.includes('already exists')) {
+              continue;
+            }
+            throw err;
+          }
+        }
+        await client.query('COMMIT');
+        console.log('✅ Migración ranking completada.');
+      } else {
+        console.log('✅ Migraciones ya aplicadas.');
+      }
     }
   } catch (err) {
     await client.query('ROLLBACK').catch(() => {});

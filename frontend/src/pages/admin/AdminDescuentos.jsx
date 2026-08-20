@@ -11,7 +11,8 @@ function DescuentoModal({ onClose, onGuardado }) {
   const [form, setForm] = useState({
     nombre: '', porcentaje: '', monto_minimo_requerido: '',
     vigencia_valor: '', vigencia_unidad: 'meses',
-    duracion_activo_valor: '', duracion_activo_unidad: 'dias'
+    duracion_activo_valor: '', duracion_activo_unidad: 'dias',
+    alerta_distancia: '', alertas_activas: true
   });
   const [loading, setLoading] = useState(false);
   const set = k => e => setForm(f => ({ ...f, [k]: e.target.value }));
@@ -71,6 +72,42 @@ function DescuentoModal({ onClose, onGuardado }) {
               </select>
             </div>
           </div>
+
+          {/* Configuración de alertas */}
+          <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+              <label className="form-label" style={{ marginBottom: 0 }}>🔔 Alertas a promotoras</label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={form.alertas_activas}
+                  onChange={e => setForm(f => ({ ...f, alertas_activas: e.target.checked }))}
+                  style={{ width: 16, height: 16, accentColor: 'var(--pink-strong)' }}
+                />
+                <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-muted)' }}>
+                  {form.alertas_activas ? 'Activas' : 'Inactivas'}
+                </span>
+              </label>
+            </div>
+            {form.alertas_activas && (
+              <div className="form-group">
+                <label className="form-label">Distancia de alerta (Bs.)</label>
+                <input
+                  className="input"
+                  type="number"
+                  min="1"
+                  step="0.01"
+                  placeholder="Ej: 100 (alertar cuando falten 100 Bs.)"
+                  value={form.alerta_distancia}
+                  onChange={set('alerta_distancia')}
+                />
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
+                  La promotora recibirá una alerta cuando una clienta esté a esta distancia de alcanzar el descuento
+                </span>
+              </div>
+            )}
+          </div>
+
           <div style={{ display:'flex', gap:'0.75rem', marginTop:'0.25rem' }}>
             <button type="button" className="btn btn-ghost" style={{ flex:1 }} onClick={onClose}>Cancelar</button>
             <button id="btn-crear-descuento" type="submit" className="btn btn-primary" style={{ flex:2 }} disabled={loading}>
@@ -167,6 +204,9 @@ function DescuentoRow({ d, onToggle, onDelete }) {
           <div style={{ display:'flex', alignItems:'center', gap:'0.5rem', flexWrap:'wrap' }}>
             <span style={{ fontWeight:800, fontSize:'1rem' }}>{d.nombre}</span>
             <span className={`badge ${d.activo ? 'badge-green' : 'badge-gray'}`}>{d.activo ? 'Activo' : 'Inactivo'}</span>
+            {d.alertas_activas && d.alerta_distancia > 0 && (
+              <span className="badge" style={{ background: '#DBEAFE', color: '#1E40AF' }}>🔔 Alertas ON</span>
+            )}
           </div>
           <div style={{ fontSize:'0.82rem', color:'var(--text-muted)', marginTop:'0.4rem', display:'flex', flexWrap:'wrap', gap:'0.75rem' }}>
             <span>🎁 {d.porcentaje}% OFF</span>
@@ -174,6 +214,11 @@ function DescuentoRow({ d, onToggle, onDelete }) {
             <span>⏱️ Vigencia: {d.vigencia_valor} {d.vigencia_unidad}</span>
             <span>📅 Expira: {fmtDate(d.fecha_expiracion)}</span>
           </div>
+          {d.alertas_activas && d.alerta_distancia > 0 && (
+            <div style={{ fontSize:'0.75rem', color: '#3B82F6', marginTop:'0.3rem', fontWeight: 600 }}>
+              🔔 Alerta a {fmt(d.alerta_distancia)} antes del descuento
+            </div>
+          )}
         </div>
         <div style={{ display:'flex', gap:'0.5rem', flexShrink:0 }}>
           <button

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { X, Crown, Plus } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 import api from '../lib/api';
+import AlertaDescuentoModal from './AlertaDescuentoModal';
 
 const fmt = n => new Intl.NumberFormat('es-BO', { style: 'currency', currency: 'BOB', minimumFractionDigits: 0 }).format(n || 0);
 const fmtDate = d => new Date(d).toLocaleDateString('es-BO', { day: '2-digit', month: 'short', year: 'numeric' });
@@ -16,6 +17,7 @@ export default function ClienteDetalleModal({ cliente: initialCliente, onClose, 
   const [nota, setNota] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [tab, setTab] = useState('info'); // info | historial
+  const [alertasCreadas, setAlertasCreadas] = useState([]);
 
   useEffect(() => {
     const load = async () => {
@@ -42,6 +44,9 @@ export default function ClienteDetalleModal({ cliente: initialCliente, onClose, 
       const { data } = await api.post(`/clientes/${cliente.id}/ingreso`, { monto: m, nota });
       onIngresoRegistrado(data.cliente, data.nuevas_notificaciones || []);
       toast.success(`Ingreso de ${fmt(m)} registrado`);
+      if (data.alertas_creadas && data.alertas_creadas.length > 0) {
+        setAlertasCreadas(data.alertas_creadas);
+      }
     } catch (err) {
       toast.error(err.response?.data?.error || 'Error');
       setSubmitting(false);
@@ -148,6 +153,19 @@ export default function ClienteDetalleModal({ cliente: initialCliente, onClose, 
           </div>
         )}
       </div>
+
+      {/* Modal de alertas WhatsApp */}
+      {alertasCreadas.length > 0 && (
+        <AlertaDescuentoModal
+          alertas={alertasCreadas}
+          cliente={cliente}
+          onClose={() => setAlertasCreadas([])}
+          onEnviar={(id) => {
+            api.post(`/ranking/alertas/${id}/enviar`).catch(() => {});
+            setAlertasCreadas(prev => prev.filter(a => a.id !== id));
+          }}
+        />
+      )}
     </div>
   );
 }

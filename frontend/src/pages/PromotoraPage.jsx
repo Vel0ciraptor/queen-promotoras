@@ -7,7 +7,8 @@ import ClientCard from '../components/ClientCard';
 import NuevoClienteModal from '../components/NuevoClienteModal';
 import ClienteDetalleModal from '../components/ClienteDetalleModal';
 import CompletarInfoModal from '../components/CompletarInfoModal';
-import { Search, Plus, LogOut, Moon, Sun, ArrowUpDown } from 'lucide-react';
+import RankingPanel from '../components/RankingPanel';
+import { Search, Plus, LogOut, Moon, Sun, ArrowUpDown, Trophy, List } from 'lucide-react';
 import queenLogo from '../assets/logoqueen.png';
 
 const LIMIT = 7;
@@ -28,6 +29,7 @@ export default function PromotoraPage() {
   const [sortBy, setSortBy] = useState('fecha');
   const [sortOrder, setSortOrder] = useState('desc');
   const [completandoInfo, setCompletandoInfo] = useState(null);
+  const [vistaActiva, setVistaActiva] = useState('lista'); // 'lista' | 'ranking'
 
   const chimeRef = useRef(null);
   const searchDebounce = useRef(null);
@@ -141,6 +143,22 @@ export default function PromotoraPage() {
 
       {/* Search sticky */}
       <div className="search-sticky">
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem', marginBottom: '0.75rem' }}>
+          <button
+            className={`ranking-tab ${vistaActiva === 'lista' ? 'active' : ''}`}
+            onClick={() => setVistaActiva('lista')}
+            style={{ flex: 'unset', padding: '0.4rem 0.875rem' }}
+          >
+            <List size={14} /> Clientas
+          </button>
+          <button
+            className={`ranking-tab ${vistaActiva === 'ranking' ? 'active' : ''}`}
+            onClick={() => setVistaActiva('ranking')}
+            style={{ flex: 'unset', padding: '0.4rem 0.875rem' }}
+          >
+            <Trophy size={14} /> Ranking
+          </button>
+        </div>
         <div className="input-wrapper">
           <Search size={18} className="input-icon" />
           <input
@@ -157,62 +175,70 @@ export default function PromotoraPage() {
           <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
             {total} cliente{total !== 1 ? 's' : ''} registrada{total !== 1 ? 's' : ''}
           </span>
-          <div style={{ display: 'flex', gap: '0.35rem', overflowX: 'auto', paddingBottom: '0.25rem' }}>
-            {sortOptions.map(opt => (
-              <button
-                key={opt.key}
-                onClick={() => handleSort(opt.key)}
-                style={{
-                  fontSize: '0.72rem',
-                  padding: '0.25rem 0.5rem',
-                  borderRadius: '1rem',
-                  border: 'none',
-                  cursor: 'pointer',
-                  whiteSpace: 'nowrap',
-                  fontWeight: sortBy === opt.key ? 700 : 500,
-                  background: sortBy === opt.key ? 'var(--pink-strong)' : 'var(--bg-secondary)',
-                  color: sortBy === opt.key ? '#fff' : 'var(--text-muted)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.2rem',
-                  transition: 'all 0.15s ease'
-                }}
-              >
-                <ArrowUpDown size={10} />
-                {opt.label}
-              </button>
-            ))}
-          </div>
+          {vistaActiva === 'lista' && (
+            <div style={{ display: 'flex', gap: '0.35rem', overflowX: 'auto', paddingBottom: '0.25rem' }}>
+              {sortOptions.map(opt => (
+                <button
+                  key={opt.key}
+                  onClick={() => handleSort(opt.key)}
+                  style={{
+                    fontSize: '0.72rem',
+                    padding: '0.25rem 0.5rem',
+                    borderRadius: '1rem',
+                    border: 'none',
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                    fontWeight: sortBy === opt.key ? 700 : 500,
+                    background: sortBy === opt.key ? 'var(--pink-strong)' : 'var(--bg-secondary)',
+                    color: sortBy === opt.key ? '#fff' : 'var(--text-muted)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.2rem',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  <ArrowUpDown size={10} />
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Lista clientes */}
+      {/* Contenido principal */}
       <div style={{ flex: 1, padding: '0.75rem 1rem', paddingBottom: '6rem' }} className="gap-stack">
-        {loading && clientes.length === 0 ? (
-          Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="skeleton" style={{ height: 76, borderRadius: '1.25rem' }} />
-          ))
-        ) : clientes.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-muted)' }}>
-            <div style={{ fontSize: '3rem', marginBottom: '0.75rem' }}>🔍</div>
-            <p style={{ fontWeight: 700 }}>Sin resultados</p>
-            <p style={{ fontSize: '0.85rem', marginTop: '0.25rem' }}>Intenta con otro nombre o CI</p>
-          </div>
+        {vistaActiva === 'ranking' ? (
+          <RankingPanel />
         ) : (
           <>
-            {clientes.map(c => (
-              <ClientCard key={c.id} cliente={c} onClick={() => setSelected(c)} onCompletar={(cliente) => setCompletandoInfo(cliente)} />
-            ))}
-            {hayMas && (
-              <button
-                className="btn btn-ghost"
-                style={{ width: '100%' }}
-                onClick={handleCargarMas}
-                disabled={loading}
-                id="btn-cargar-mas"
-              >
-                {loading ? '⏳ Cargando...' : `Ver más ▼  (${total - clientes.length} restantes)`}
-              </button>
+            {loading && clientes.length === 0 ? (
+              Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="skeleton" style={{ height: 76, borderRadius: '1.25rem' }} />
+              ))
+            ) : clientes.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-muted)' }}>
+                <div style={{ fontSize: '3rem', marginBottom: '0.75rem' }}>🔍</div>
+                <p style={{ fontWeight: 700 }}>Sin resultados</p>
+                <p style={{ fontSize: '0.85rem', marginTop: '0.25rem' }}>Intenta con otro nombre o CI</p>
+              </div>
+            ) : (
+              <>
+                {clientes.map(c => (
+                  <ClientCard key={c.id} cliente={c} onClick={() => setSelected(c)} onCompletar={(cliente) => setCompletandoInfo(cliente)} />
+                ))}
+                {hayMas && (
+                  <button
+                    className="btn btn-ghost"
+                    style={{ width: '100%' }}
+                    onClick={handleCargarMas}
+                    disabled={loading}
+                    id="btn-cargar-mas"
+                  >
+                    {loading ? '⏳ Cargando...' : `Ver más ▼  (${total - clientes.length} restantes)`}
+                  </button>
+                )}
+              </>
             )}
           </>
         )}

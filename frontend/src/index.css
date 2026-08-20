@@ -404,3 +404,187 @@ tbody tr:hover { background: var(--surface2); }
 .row { display: flex; align-items: center; }
 .row-between { display: flex; align-items: center; justify-content: space-between; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
+
+/* ── Ranking / Crown system ─────────────────────────────────── */
+.crown-badge {
+  display: inline-flex; align-items: center; gap: 0.25rem;
+  padding: 0.2rem 0.55rem; border-radius: 99px;
+  font-size: 0.68rem; font-weight: 800; white-space: nowrap;
+  color: #fff; letter-spacing: 0.02em;
+}
+.crown-1 { background: linear-gradient(135deg, #FFD1E3, #FF6FA5); color: #7A0033; }
+.crown-2 { background: linear-gradient(135deg, #FF6FA5, #FF3D8F); }
+.crown-3 { background: linear-gradient(135deg, #FF3D8F, #e0007b); }
+.crown-4 { background: linear-gradient(135deg, #CD7F6B, #E8967E); }
+.crown-5 { background: linear-gradient(135deg, #C0C0C0, #D4A0B0); color: #4A3040; }
+.crown-6 { background: linear-gradient(135deg, #F4C95D, #FF6FA5); color: #5A3000; }
+.crown-7 {
+  background: linear-gradient(135deg, #E5E4E2, #FFB6C1, #E5E4E2, #FFD1E3);
+  background-size: 300% 300%; animation: crown-platinum 3s ease infinite;
+  color: #5A3050;
+}
+@keyframes crown-platinum {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+[data-theme="dark"] .crown-1 { background: linear-gradient(135deg, #FF6FA5, #FF3D8F); color: #fff; }
+[data-theme="dark"] .crown-2 { background: linear-gradient(135deg, #FF3D8F, #e0007b); }
+[data-theme="dark"] .crown-5 { background: linear-gradient(135deg, #D4A0B0, #C0C0C0); color: #1A0F16; }
+[data-theme="dark"] .crown-6 { background: linear-gradient(135deg, #F4C95D, #FF3D8F); color: #1A0F16; }
+[data-theme="dark"] .crown-7 {
+  background: linear-gradient(135deg, #FFB6C1, #E5E4E2, #FFB6C1, #E5E4E2);
+  background-size: 300% 300%; animation: crown-platinum 3s ease infinite;
+  color: #1A0F16;
+}
+
+/* Ranking tabs */
+.ranking-tabs {
+  display: flex; gap: 0.35rem; background: var(--surface);
+  border-radius: 1rem; padding: 0.25rem; border: 1px solid var(--border);
+}
+.ranking-tab {
+  flex: 1; padding: 0.5rem 0.75rem; border-radius: 0.875rem; border: none;
+  font-family: inherit; font-weight: 700; font-size: 0.78rem;
+  cursor: pointer; transition: all 0.15s ease;
+  background: transparent; color: var(--text-muted);
+  display: flex; align-items: center; justify-content: center; gap: 0.3rem;
+}
+.ranking-tab.active {
+  background: var(--pink-strong); color: #fff;
+  box-shadow: 0 2px 10px rgba(255,61,143,0.3);
+}
+.ranking-tab:not(.active):hover { background: var(--surface2); color: var(--text-primary); }
+
+/* Ranking podium (top 3) */
+.ranking-podium {
+  display: flex; align-items: flex-end; justify-content: center;
+  gap: 0.5rem; padding: 1rem 0 0.5rem; margin-bottom: 0.5rem;
+}
+.podium-item {
+  display: flex; flex-direction: column; align-items: center;
+  text-align: center; position: relative;
+}
+.podium-avatar {
+  border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  font-weight: 900; color: #fff; box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+  margin-bottom: 0.4rem;
+}
+.podium-avatar.first { width: 72px; height: 72px; font-size: 1.5rem; background: linear-gradient(135deg, #F4C95D, #FF6FA5); }
+.podium-avatar.second { width: 58px; height: 58px; font-size: 1.2rem; background: linear-gradient(135deg, #C0C0C0, #D4A0B0); }
+.podium-avatar.third { width: 52px; height: 52px; font-size: 1rem; background: linear-gradient(135deg, #CD7F6B, #E8967E); }
+.podium-position {
+  font-size: 0.65rem; font-weight: 800; color: var(--text-muted);
+  margin-top: 0.15rem;
+}
+.podium-name {
+  font-size: 0.72rem; font-weight: 800; color: var(--text-primary);
+  max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.podium-monto {
+  font-size: 0.65rem; font-weight: 700; color: var(--pink-strong);
+}
+
+/* Ranking list item */
+.ranking-item {
+  display: flex; align-items: center; gap: 0.75rem;
+  padding: 0.75rem 1rem; background: var(--surface);
+  border-radius: 1rem; border: 1px solid var(--border);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.ranking-item:hover { transform: translateY(-1px); box-shadow: var(--shadow); }
+.ranking-item.top3 { border-color: var(--gold); }
+.ranking-pos {
+  width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.75rem; font-weight: 900; color: var(--text-muted);
+  background: var(--surface2);
+}
+.ranking-item.top3 .ranking-pos { background: var(--gold); color: #3d2000; }
+.ranking-avatar-sm {
+  width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 900; font-size: 0.85rem; color: #fff;
+  background: linear-gradient(135deg, var(--pink-strong), var(--pink-medium));
+}
+.ranking-info { flex: 1; min-width: 0; }
+.ranking-name {
+  font-weight: 800; font-size: 0.88rem; color: var(--text-primary);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ranking-stats {
+  display: flex; gap: 0.6rem; font-size: 0.75rem; color: var(--text-muted); margin-top: 0.15rem;
+}
+
+/* WhatsApp alert card */
+.whatsapp-alert-card {
+  background: var(--surface); border-radius: 1rem; padding: 1rem;
+  border: 1.5px solid #25D366; position: relative; overflow: hidden;
+}
+.whatsapp-alert-card::before {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(135deg, rgba(37,211,102,0.05), transparent);
+  pointer-events: none;
+}
+.btn-whatsapp {
+  background: #25D366; color: #fff; border: none; border-radius: 0.75rem;
+  padding: 0.5rem 0.875rem; font-weight: 700; font-size: 0.78rem;
+  cursor: pointer; display: inline-flex; align-items: center; gap: 0.35rem;
+  transition: background 0.15s, transform 0.15s;
+  font-family: inherit;
+}
+.btn-whatsapp:hover { background: #1DA851; transform: translateY(-1px); }
+.btn-whatsapp:active { transform: scale(0.96); }
+
+/* Alert proximity indicator */
+.alert-proximity {
+  display: flex; align-items: center; gap: 0.4rem;
+  padding: 0.3rem 0.6rem; border-radius: 0.75rem;
+  font-size: 0.7rem; font-weight: 700;
+  background: linear-gradient(135deg, #FEF3C7, #FDE68A);
+  color: #92400E; border: 1px solid #F59E0B;
+}
+[data-theme="dark"] .alert-proximity {
+  background: linear-gradient(135deg, rgba(245,158,11,0.2), rgba(245,158,11,0.1));
+  color: #FCD34D;
+}
+
+/* Separator between ranking sections */
+.section-separator {
+  height: 1px; background: var(--border);
+  margin: 1rem 0; position: relative;
+}
+.section-separator::after {
+  content: attr(data-label); position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%, -50%); background: var(--bg);
+  padding: 0 0.75rem; font-size: 0.72rem; font-weight: 700;
+  color: var(--text-muted); white-space: nowrap;
+}
+
+/* Empty state for ranking */
+.ranking-empty {
+  text-align: center; padding: 2rem 1rem; color: var(--text-muted);
+}
+
+/* Skeleton for ranking items */
+.skeleton-ranking-item {
+  display: flex; align-items: center; gap: 0.75rem;
+  padding: 0.75rem 1rem;
+}
+.skeleton-ranking-item .skeleton {
+  border-radius: 1rem;
+}
+
+/* Crown tooltip */
+.crown-tooltip {
+  position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%);
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 0.5rem; padding: 0.35rem 0.5rem;
+  font-size: 0.65rem; font-weight: 700; color: var(--text-primary);
+  white-space: nowrap; pointer-events: none;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  opacity: 0; transition: opacity 0.15s;
+  z-index: 10;
+}
+.crown-wrapper:hover .crown-tooltip { opacity: 1; }

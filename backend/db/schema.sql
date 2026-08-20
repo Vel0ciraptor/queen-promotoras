@@ -105,3 +105,47 @@ INSERT INTO usuarios (nombre, usuario, password_hash, rol)
 VALUES ('Propietaria', 'admin', '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'admin');
 -- La contraseña del hash de arriba es "password" — cambiar después
 
+-- ── Ranking: Tabla de coronas ──────────────────────────────────
+CREATE TABLE IF NOT EXISTS coronas (
+  id SERIAL PRIMARY KEY,
+  nombre VARCHAR(50) NOT NULL,
+  monto_minimo DECIMAL(12,2) NOT NULL,
+  color_claro VARCHAR(30) NOT NULL,
+  color_oscuro VARCHAR(30) NOT NULL,
+  icono VARCHAR(10) DEFAULT '👑',
+  orden INT NOT NULL DEFAULT 0
+);
+
+-- Seed de las 7 coronas (montos acumulados)
+INSERT INTO coronas (nombre, monto_minimo, color_claro, color_oscuro, icono, orden) VALUES
+('Rosa Suave',    500,    '#FFD1E3', '#FF6FA5', '👑', 1),
+('Rosa Vibrante', 1000,   '#FF6FA5', '#FF3D8F', '👑', 2),
+('Rosa Intensa',  2000,   '#FF3D8F', '#e0007b', '👑', 3),
+('Bronce Rosa',   3500,   '#CD7F6B', '#E8967E', '👑', 4),
+('Plata Rosa',    5000,   '#D4A0B0', '#C0C0C0', '👑', 5),
+('Oro Rosa',      7500,   '#F4C95D', '#FF6FA5', '👑', 6),
+('Platinum Rosa', 10000,  '#E5E4E2', '#FFB6C1', '💎', 7);
+
+-- ── Ranking: Alertas de descuento para promotoras ──────────────
+CREATE TABLE IF NOT EXISTS alertas_descuento (
+  id SERIAL PRIMARY KEY,
+  cliente_id INT NOT NULL REFERENCES clientes(id) ON DELETE CASCADE,
+  descuento_id INT NOT NULL REFERENCES descuentos(id) ON DELETE CASCADE,
+  promotora_id INT REFERENCES usuarios(id),
+  monto_faltante DECIMAL(12,2) NOT NULL,
+  porcentaje_descuento DECIMAL(5,2) NOT NULL,
+  nombre_descuento VARCHAR(100),
+  enviada BOOLEAN DEFAULT false,
+  fecha_creacion TIMESTAMP DEFAULT NOW(),
+  fecha_enviada TIMESTAMP
+);
+
+-- Índices para performance
+CREATE INDEX IF NOT EXISTS idx_alertas_cliente ON alertas_descuento(cliente_id);
+CREATE INDEX IF NOT EXISTS idx_alertas_promotora ON alertas_descuento(promotora_id);
+CREATE INDEX IF NOT EXISTS idx_alertas_enviada ON alertas_descuento(enviada);
+
+-- ── Campo distancia de alerta para descuentos ──────────────────
+ALTER TABLE descuentos ADD COLUMN IF NOT EXISTS alerta_distancia DECIMAL(12,2) DEFAULT 0;
+ALTER TABLE descuentos ADD COLUMN IF NOT EXISTS alertas_activas BOOLEAN DEFAULT true;
+
