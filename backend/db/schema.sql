@@ -99,11 +99,10 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Insertar admin inicial (password: admin123 — CAMBIAR EN PRODUCCIÓN)
--- password_hash generado con bcrypt rounds=10
+-- Insertar admin inicial (password: qu33nstyl3*2026)
+-- password_hash generado con bcrypt ( rounds = 10 )
 INSERT INTO usuarios (nombre, usuario, password_hash, rol)
-VALUES ('Propietaria', 'admin', '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'admin');
--- La contraseña del hash de arriba es "password" — cambiar después
+VALUES ('Propietaria', 'admin', '$2a$10$liwH53ANOwHSY0IVUr7C.ubho4kYPGHHVmB81zX68Z8KT5H8eTdre', 'admin');
 
 -- ── Ranking: Tabla de coronas ──────────────────────────────────
 CREATE TABLE IF NOT EXISTS coronas (
