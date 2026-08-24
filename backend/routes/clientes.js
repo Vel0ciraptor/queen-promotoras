@@ -65,27 +65,6 @@ router.get('/', async (req, res) => {
   }
 });
 
-// GET /api/clientes/:id
-router.get('/:id', async (req, res) => {
-  try {
-    const { rows } = await pool.query(
-      `SELECT c.*, u.nombre AS creado_por_nombre FROM clientes c LEFT JOIN usuarios u ON c.creado_por = u.id WHERE c.id = $1`,
-      [req.params.id]
-    );
-    if (!rows.length) return res.status(404).json({ error: 'Cliente no encontrado' });
-
-    const { rows: historial } = await pool.query(
-      `SELECT h.*, u.nombre AS registrado_por_nombre FROM historial_ingresos h LEFT JOIN usuarios u ON h.registrado_por = u.id WHERE h.cliente_id = $1 ORDER BY h.fecha DESC`,
-      [req.params.id]
-    );
-
-    res.json({ cliente: rows[0], historial });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Error del servidor' });
-  }
-});
-
 // GET /api/clientes/export — exportar todas las clientas (Admin)
 router.get('/export', requireRol('admin'), async (req, res) => {
   try {
@@ -118,6 +97,27 @@ router.get('/export-historial', requireRol('admin'), async (req, res) => {
   } catch (err) {
     console.error('Error al exportar historial:', err);
     res.status(500).json({ error: 'Error del servidor al exportar historial' });
+  }
+});
+
+// GET /api/clientes/:id
+router.get('/:id', async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT c.*, u.nombre AS creado_por_nombre FROM clientes c LEFT JOIN usuarios u ON c.creado_por = u.id WHERE c.id = $1`,
+      [req.params.id]
+    );
+    if (!rows.length) return res.status(404).json({ error: 'Cliente no encontrado' });
+
+    const { rows: historial } = await pool.query(
+      `SELECT h.*, u.nombre AS registrado_por_nombre FROM historial_ingresos h LEFT JOIN usuarios u ON h.registrado_por = u.id WHERE h.cliente_id = $1 ORDER BY h.fecha DESC`,
+      [req.params.id]
+    );
+
+    res.json({ cliente: rows[0], historial });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error del servidor' });
   }
 });
 
