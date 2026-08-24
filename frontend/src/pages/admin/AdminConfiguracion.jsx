@@ -1,4 +1,7 @@
+import { useState } from 'react';
 import { useTheme } from '../../context/ThemeContext';
+import { useToast } from '../../context/ToastContext';
+import api from '../../lib/api';
 import { Moon, Sun } from 'lucide-react';
 
 export default function AdminConfiguracion() {
@@ -49,6 +52,11 @@ export default function AdminConfiguracion() {
       </div>
 
       <div className="card">
+        <h3 style={{ fontWeight:800, marginBottom:'1rem' }}>Cambiar mi contraseña 🔒</h3>
+        <CambiarPasswordForm />
+      </div>
+
+      <div className="card">
         <h3 style={{ fontWeight:800, marginBottom:'1rem' }}>Información del sistema</h3>
         <div style={{ fontSize:'0.85rem', color:'var(--text-muted)', lineHeight:1.8 }}>
           <div>🌸 Queen Promotoras v1.0</div>
@@ -58,5 +66,86 @@ export default function AdminConfiguracion() {
         </div>
       </div>
     </div>
+  );
+}
+
+function CambiarPasswordForm() {
+  const toast = useToast();
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!currentPassword || !newPassword) {
+      return toast.error('Ingresa la contraseña actual y la nueva');
+    }
+    if (newPassword !== confirmPassword) {
+      return toast.error('La nueva contraseña y la confirmación no coinciden');
+    }
+    if (newPassword.length < 6) {
+      return toast.error('La nueva contraseña debe tener al menos 6 caracteres');
+    }
+
+    setLoading(true);
+    try {
+      await api.post('/auth/change-password', { currentPassword, newPassword });
+      toast.success('¡Contraseña cambiada exitosamente!');
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Error al cambiar la contraseña');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="gap-stack">
+      <div className="form-group">
+        <label className="form-label">Contraseña actual *</label>
+        <input
+          type="password"
+          className="input"
+          placeholder="••••••••"
+          value={currentPassword}
+          onChange={e => setCurrentPassword(e.target.value)}
+          required
+        />
+      </div>
+      <div className="form-group">
+        <label className="form-label">Nueva contraseña *</label>
+        <input
+          type="password"
+          className="input"
+          placeholder="Mínimo 6 caracteres"
+          value={newPassword}
+          onChange={e => setNewPassword(e.target.value)}
+          required
+        />
+      </div>
+      <div className="form-group">
+        <label className="form-label">Confirmar nueva contraseña *</label>
+        <input
+          type="password"
+          className="input"
+          placeholder="Repite la nueva contraseña"
+          value={confirmPassword}
+          onChange={e => setConfirmPassword(e.target.value)}
+          required
+        />
+      </div>
+      <button
+        id="btn-cambiar-password"
+        type="submit"
+        className="btn btn-primary"
+        style={{ marginTop: '0.5rem' }}
+        disabled={loading}
+      >
+        {loading ? '⏳ Actualizando...' : '🔐 Actualizar contraseña'}
+      </button>
+    </form>
   );
 }

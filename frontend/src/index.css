@@ -596,3 +596,46 @@ tbody tr:hover { background: var(--surface2); }
   z-index: 10;
 }
 .crown-wrapper:hover .crown-tooltip { opacity: 1; }
+
+/* ── Custom Cards & Responsive Layouts ────────────────────── */
+.admin-clientes-cards {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.875rem;
+}
+
+@media (min-width: 640px) {
+  .admin-clientes-cards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .admin-clientes-cards {
+    display: none;
+  }
+  .admin-clientes-table {
+    display: block;
+  }
+}
+
+@media (max-width: 1023px) {
+  .admin-clientes-table {
+    display: none;
+  }
+}
+
+.hidden-cards {
+  display: none !important;
+}
+
+.hidden-table {
+  display: none !important;
+}
+
+/* Evitar desbordamiento en tarjetas de promotoras */
+.admin-promotora-card {
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+

@@ -86,6 +86,41 @@ router.get('/:id', async (req, res) => {
   }
 });
 
+// GET /api/clientes/export — exportar todas las clientas (Admin)
+router.get('/export', requireRol('admin'), async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT c.id, c.nombre_completo, c.carnet_identidad, c.celular, c.monto_acumulado, c.visitas_totales, c.fecha_registro,
+              u.nombre AS creado_por_nombre
+       FROM clientes c
+       LEFT JOIN usuarios u ON c.creado_por = u.id
+       ORDER BY c.fecha_registro DESC`
+    );
+    res.json({ clientes: rows });
+  } catch (err) {
+    console.error('Error al exportar clientes:', err);
+    res.status(500).json({ error: 'Error del servidor al exportar' });
+  }
+});
+
+// GET /api/clientes/export-historial — exportar todo el historial de promotoras/ingresos (Admin)
+router.get('/export-historial', requireRol('admin'), async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT h.id, h.fecha, c.nombre_completo AS cliente_nombre, c.carnet_identidad AS cliente_ci,
+              h.monto, u.nombre AS registrado_por_promotora, u.usuario AS promotora_usuario, h.nota
+       FROM historial_ingresos h
+       JOIN clientes c ON h.cliente_id = c.id
+       LEFT JOIN usuarios u ON h.registrado_por = u.id
+       ORDER BY h.fecha DESC`
+    );
+    res.json({ historial: rows });
+  } catch (err) {
+    console.error('Error al exportar historial:', err);
+    res.status(500).json({ error: 'Error del servidor al exportar historial' });
+  }
+});
+
 // POST /api/clientes/import — importar clientes desde Excel (batch)
 router.post('/import', requireRol('admin'), async (req, res) => {
   const { clientes } = req.body;

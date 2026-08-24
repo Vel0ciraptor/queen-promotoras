@@ -261,37 +261,40 @@ export default function AdminPromotoras() {
       ) : (
         <div className="gap-stack">
           {usuarios.filter(u => u.rol !== 'admin').map(u => (
-            <div key={u.id} className="card" style={{ opacity: u.activo ? 1 : 0.6 }}>
-              <div style={{ display:'flex', alignItems:'center', gap:'1rem', flexWrap:'wrap' }}>
-                <div style={{
-                  width:44, height:44, borderRadius:'50%', flexShrink:0,
-                  background: 'linear-gradient(135deg, var(--pink-medium), var(--pink-strong))',
-                  display:'flex', alignItems:'center', justifyContent:'center',
-                  color:'#fff', fontWeight:900, fontSize:'1rem'
-                }}>
-                  {u.nombre[0].toUpperCase()}
-                </div>
-                <div style={{ flex:1, minWidth:0 }}>
-                  <div style={{ display:'flex', alignItems:'center', gap:'0.5rem', flexWrap:'wrap' }}>
-                    <span style={{ fontWeight:800 }}>{u.nombre}</span>
-                    <span className={`badge ${ROL_BADGE[u.rol] || 'badge-gray'}`}>{ROL_LABEL[u.rol]}</span>
-                    {!u.activo && <span className="badge badge-red">Inactiva</span>}
+            <div key={u.id} className="card admin-promotora-card" style={{ opacity: u.activo ? 1 : 0.6 }}>
+              <div style={{ display:'flex', alignItems:'center', gap:'0.875rem', flexWrap:'wrap', justifyContent:'space-between' }}>
+                <div style={{ display:'flex', alignItems:'center', gap:'0.75rem', flex:'1 1 200px', minWidth:0 }}>
+                  <div style={{
+                    width:44, height:44, borderRadius:'50%', flexShrink:0,
+                    background: 'linear-gradient(135deg, var(--pink-medium), var(--pink-strong))',
+                    display:'flex', alignItems:'center', justifyContent:'center',
+                    color:'#fff', fontWeight:900, fontSize:'1rem'
+                  }}>
+                    {u.nombre[0].toUpperCase()}
                   </div>
-                  <div style={{ fontSize:'0.8rem', color:'var(--text-muted)', marginTop:'0.2rem' }}>
-                    @{u.usuario} · Desde {fmtDate(u.creado_en)}
+                  <div style={{ flex:1, minWidth:0, overflowWrap:'anywhere' }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:'0.35rem', flexWrap:'wrap' }}>
+                      <span style={{ fontWeight:800, wordBreak:'break-word' }}>{u.nombre}</span>
+                      <span className={`badge ${ROL_BADGE[u.rol] || 'badge-gray'}`}>{ROL_LABEL[u.rol]}</span>
+                      {!u.activo && <span className="badge badge-red">Inactiva</span>}
+                    </div>
+                    <div style={{ fontSize:'0.78rem', color:'var(--text-muted)', marginTop:'0.2rem', wordBreak:'break-all' }}>
+                      @{u.usuario} · Desde {fmtDate(u.creado_en)}
+                    </div>
                   </div>
                 </div>
-                <div style={{ display:'flex', gap:'0.5rem' }}>
+
+                <div style={{ display:'flex', gap:'0.4rem', flexWrap:'nowrap' }}>
                   <button
                     className="btn btn-ghost"
-                    style={{ minHeight:'unset', padding:'0.5rem 0.75rem', fontSize:'0.78rem' }}
+                    style={{ minHeight:'unset', padding:'0.5rem 0.65rem', fontSize:'0.78rem' }}
                     onClick={() => setSelectedPromotora(u)}
                   >
                     📊 Historial
                   </button>
                   <button
                     className={`btn ${u.activo ? 'btn-ghost' : 'btn-primary'} btn-icon`}
-                    style={{ minHeight:'unset', padding:'0.5rem 0.75rem', fontSize:'0.8rem' }}
+                    style={{ minHeight:'unset', padding:'0.5rem 0.65rem', fontSize:'0.8rem' }}
                     onClick={() => handleToggle(u)}
                     id={`btn-toggle-usuario-${u.id}`}
                     title={u.activo ? 'Desactivar' : 'Activar'}
