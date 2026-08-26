@@ -23,10 +23,21 @@ app.use(helmet({
   contentSecurityPolicy: false, // Desactivado para permitir fuentes/iconos locales sin conflicto
 }));
 
-// Rate limiting (Protección contra fuerza bruta y DoS)
+// CORS - Permitir cualquier origen
+// En prod el frontend se sirve desde el mismo servidor (same-origin)
+// En dev Vite proxy maneja las requests
+// La función permite cualquier origin incluyendo requests sin header Origin (same-origin, mobile, etc.)
+app.use(cors({
+  origin: function (origin, callback) {
+    callback(null, true);
+  },
+  credentials: true
+}));
+
+// Rate limiting - Límite generoso ya que todas las promotoras comparten IP detras del proxy de Dokploy
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 300, // Límite de 300 peticiones por IP
+  max: 1000, // 1000 req/15min por IP - generoso para multiples promotoras
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Demasiadas peticiones. Por favor, reintenta más tarde.' }
@@ -37,8 +48,6 @@ const authLimiter = rateLimit({
   max: 20, // Máximo 20 intentos de login por 15 min
   message: { error: 'Demasiados intentos de inicio de sesión. Reintenta en 15 minutos.' }
 });
-
-app.use(cors({ origin: process.env.FRONTEND_URL || '*', credentials: true }));
 app.use(express.json({ limit: '1mb' })); // Previene payload demasiado grande (DoS)
 
 app.use('/api/auth/login', authLimiter);
