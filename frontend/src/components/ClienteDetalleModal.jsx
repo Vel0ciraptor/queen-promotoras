@@ -18,6 +18,7 @@ export default function ClienteDetalleModal({ cliente: initialCliente, onClose, 
   const [submitting, setSubmitting] = useState(false);
   const [tab, setTab] = useState('info'); // info | historial
   const [alertasCreadas, setAlertasCreadas] = useState([]);
+  const [pendingIngreso, setPendingIngreso] = useState(null);
 
   useEffect(() => {
     const load = async () => {
@@ -42,18 +43,29 @@ export default function ClienteDetalleModal({ cliente: initialCliente, onClose, 
     setSubmitting(true);
     try {
       const { data } = await api.post(`/clientes/${cliente.id}/ingreso`, { monto: m, nota });
-      onIngresoRegistrado(data.cliente, data.nuevas_notificaciones || []);
       toast.success(`Ingreso de ${fmt(m)} registrado`);
       const todasLasAlertas = [
         ...(data.nuevas_notificaciones || []).filter(a => a.tipo === 'lograda'),
         ...(data.alertas_creadas || []).map(a => ({ ...a, tipo: 'progreso' }))
       ];
+      setPendingIngreso({ cliente: data.cliente, nuevasNotifs: data.nuevas_notificaciones || [] });
       if (todasLasAlertas.length > 0) {
         setAlertasCreadas(todasLasAlertas);
+      } else {
+        onIngresoRegistrado(data.cliente, data.nuevas_notificaciones || []);
+        setPendingIngreso(null);
       }
     } catch (err) {
       toast.error(err.response?.data?.error || 'Error');
       setSubmitting(false);
+    }
+  };
+
+  const handleAlertasCerradas = () => {
+    setAlertasCreadas([]);
+    if (pendingIngreso) {
+      onIngresoRegistrado(pendingIngreso.cliente, pendingIngreso.nuevasNotifs);
+      setPendingIngreso(null);
     }
   };
 
@@ -186,7 +198,7 @@ export default function ClienteDetalleModal({ cliente: initialCliente, onClose, 
         <AlertaDescuentoModal
           alertas={alertasCreadas}
           cliente={cliente}
-          onClose={() => setAlertasCreadas([])}
+          onClose={handleAlertasCerradas}
           onEnviar={(id) => {
             api.post(`/ranking/alertas/${id}/enviar`).catch(() => {});
             setAlertasCreadas(prev => prev.filter(a => a.id !== id));

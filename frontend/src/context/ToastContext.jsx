@@ -15,9 +15,10 @@ export function ToastProvider({ children }) {
   const success = useCallback((m) => addToast(m, 'success'), [addToast]);
   const error   = useCallback((m) => addToast(m, 'error', 4500), [addToast]);
   const crown   = useCallback((m) => addToast(m, 'gold'), [addToast]);
+  const info    = useCallback((m) => addToast(m, 'info'), [addToast]);
 
   return (
-    <ToastContext.Provider value={{ success, error, crown }}>
+    <ToastContext.Provider value={{ success, error, crown, info }}>
       {children}
       <div className="toast-container" style={{ pointerEvents: 'none' }}>
         {toasts.map(t => (
@@ -25,6 +26,7 @@ export function ToastProvider({ children }) {
             {t.type === 'gold' && <span style={{ fontSize: '1.3rem' }}>👑</span>}
             {t.type === 'success' && <span style={{ fontSize: '1.3rem' }}>✅</span>}
             {t.type === 'error' && <span style={{ fontSize: '1.3rem' }}>❌</span>}
+            {t.type === 'info' && <span style={{ fontSize: '1.3rem' }}>⚡</span>}
             <span>{t.message}</span>
           </div>
         ))}

@@ -202,7 +202,7 @@ router.post('/import', requireRol('admin'), async (req, res) => {
         }
 
         try {
-          await verificarDescuentos(client, cliente, montoCompra);
+          await verificarDescuentos(client, cliente, montoCompra, req.user.id);
         } catch (descErr) {
           console.error(`⚠️ Error verificando descuentos para fila ${i + 1}:`, descErr.message);
         }
@@ -250,7 +250,7 @@ router.post('/', async (req, res) => {
     }
 
     // Verificar si alcanza algún descuento activo
-    await verificarDescuentos(client, cliente, monto_inicial);
+    await verificarDescuentos(client, cliente, monto_inicial, req.user.id);
 
     await client.query('COMMIT');
     res.status(201).json({ cliente });
@@ -286,13 +286,35 @@ router.post('/:id/ingreso', async (req, res) => {
     const cliente = rows[0];
 
     // Verificar descuentos
-    const nuevas = await verificarDescuentos(client, cliente, monto);
+    const nuevas = await verificarDescuentos(client, cliente, monto, req.user.id);
 
     // Crear alertas para descuentos cercanos
-    const alertas = await crearAlertasCercanas(client, cliente);
+    const alertas = await crearAlertasCercanas(client, cliente, req.user.id);
+
+    // Consultar descuentos activos del cliente para incluir en la respuesta
+    const { rows: descInfo } = await client.query(
+      `SELECT (SELECT COUNT(*) FROM notificaciones_descuento nd
+        JOIN descuentos d ON nd.descuento_id = d.id
+        WHERE nd.cliente_id = $1 AND d.activo = true AND nd.visto = false) AS descuentos_activos,
+       COALESCE(
+        (SELECT json_agg(json_build_object('nombre', d.nombre, 'porcentaje', d.porcentaje))
+         FROM notificaciones_descuento nd
+         JOIN descuentos d ON nd.descuento_id = d.id
+         WHERE nd.cliente_id = $1 AND d.activo = true AND nd.visto = false),
+        '[]'::json) AS descuentos_info`,
+      [req.params.id]
+    );
 
     await client.query('COMMIT');
-    res.json({ cliente, nuevas_notificaciones: nuevas, alertas_creadas: alertas });
+    res.json({
+      cliente: {
+        ...cliente,
+        descuentos_activos: descInfo[0]?.descuentos_activos || 0,
+        descuentos_info: descInfo[0]?.descuentos_info || []
+      },
+      nuevas_notificaciones: nuevas,
+      alertas_creadas: alertas
+    });
   } catch (err) {
     await client.query('ROLLBACK');
     console.error(err);
@@ -475,7 +497,7 @@ router.patch('/:id/notificaciones/visto', async (req, res) => {
 });
 
 // Función auxiliar: verificar descuentos alcanzados
-async function verificarDescuentos(client, cliente, montoNuevo) {
+async function verificarDescuentos(client, cliente, montoNuevo, promotoraId) {
   const montoTotal = parseFloat(cliente.monto_acumulado);
   const { rows: descuentos } = await client.query(
     `SELECT * FROM descuentos WHERE activo = true AND monto_minimo_requerido <= $1`, [montoTotal]
@@ -504,7 +526,7 @@ async function verificarDescuentos(client, cliente, montoNuevo) {
           const { rows } = await client.query(
             `INSERT INTO alertas_descuento (cliente_id, descuento_id, promotora_id, monto_faltante, porcentaje_descuento, nombre_descuento, tipo)
              VALUES ($1, $2, $3, 0, $4, $5, 'lograda') RETURNING *`,
-            [cliente.id, d.id, cliente.creado_por, d.porcentaje, d.nombre]
+            [cliente.id, d.id, promotoraId, d.porcentaje, d.nombre]
           );
           alertaLograda = rows[0];
         } else {
@@ -535,7 +557,7 @@ async function verificarDescuentos(client, cliente, montoNuevo) {
 }
 
 // Función auxiliar: crear alertas para clientas cercanas a alcanzar un descuento
-async function crearAlertasCercanas(client, cliente) {
+async function crearAlertasCercanas(client, cliente, promotoraId) {
   await client.query('SAVEPOINT alertas_cercanas');
   try {
     const montoTotal = parseFloat(cliente.monto_acumulado);
@@ -558,7 +580,7 @@ async function crearAlertasCercanas(client, cliente) {
           const { rows } = await client.query(
             `INSERT INTO alertas_descuento (cliente_id, descuento_id, promotora_id, monto_faltante, porcentaje_descuento, nombre_descuento)
              VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-            [cliente.id, d.id, cliente.creado_por, montoFaltante, d.porcentaje, d.nombre]
+            [cliente.id, d.id, promotoraId, montoFaltante, d.porcentaje, d.nombre]
           );
           nuevas.push(rows[0]);
         }

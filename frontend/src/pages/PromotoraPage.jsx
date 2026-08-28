@@ -30,6 +30,7 @@ export default function PromotoraPage() {
   const [sortOrder, setSortOrder] = useState('desc');
   const [completandoInfo, setCompletandoInfo] = useState(null);
   const [vistaActiva, setVistaActiva] = useState('lista'); // 'lista' | 'ranking'
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const chimeRef = useRef(null);
   const searchDebounce = useRef(null);
@@ -113,10 +114,13 @@ export default function PromotoraPage() {
       nuevasNotifs.forEach(d => {
         if (d.tipo === 'lograda') {
           toast.crown(`¡${clienteActualizado.nombre_completo} alcanzó ${d.porcentaje}% OFF!`);
+        } else {
+          toast.info(`⚡ ${clienteActualizado.nombre_completo} está cerca de descuento (${d.porcentaje}% OFF)`);
         }
       });
       chimeRef.current?.play?.().catch(() => {});
     }
+    setRefreshTrigger(t => t + 1);
     setSelected(null);
   };
 
@@ -218,7 +222,7 @@ export default function PromotoraPage() {
       {/* Contenido principal */}
       <div style={{ flex: 1, padding: '0.75rem 1rem', paddingBottom: '6rem' }} className="gap-stack">
         {vistaActiva === 'ranking' ? (
-          <RankingPanel />
+          <RankingPanel refreshTrigger={refreshTrigger} />
         ) : (
           <>
             {loading && clientes.length === 0 ? (

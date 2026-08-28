@@ -271,7 +271,7 @@ function AlertaItem({ alerta, onOpenEditor }) {
   );
 }
 
-export default function RankingPanel() {
+export default function RankingPanel({ refreshTrigger = 0 }) {
   const [tab, setTab] = useState('top');
   const [ranking, setRanking] = useState([]);
   const [miEquipo, setMiEquipo] = useState([]);
@@ -299,7 +299,7 @@ export default function RankingPanel() {
     }
   }, []);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => { fetchData(); }, [fetchData, refreshTrigger]);
 
   useEffect(() => {
     if (tab === 'alertas') fetchData();
