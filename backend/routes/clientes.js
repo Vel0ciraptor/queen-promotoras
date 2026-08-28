@@ -32,20 +32,15 @@ router.get('/', async (req, res) => {
     const { rows } = await pool.query(
       `SELECT c.*,
         u.nombre AS creado_por_nombre,
-        (SELECT COUNT(*) FROM notificaciones_descuento nd
-         JOIN descuentos d ON nd.descuento_id = d.id
-         WHERE nd.cliente_id = c.id AND d.activo = true) AS descuentos_activos,
-        (SELECT COUNT(*) FROM notificaciones_descuento nd
-         JOIN descuentos d ON nd.descuento_id = d.id
-         WHERE nd.cliente_id = c.id AND d.activo = true AND nd.visto = false) AS notificaciones_nuevas,
+        (SELECT COUNT(*) FROM descuentos d
+         WHERE d.activo = true AND c.monto_acumulado >= d.monto_minimo_requerido) AS descuentos_activos,
         COALESCE(
           (SELECT json_agg(json_build_object(
             'nombre', d.nombre,
             'porcentaje', d.porcentaje
           ))
-          FROM notificaciones_descuento nd
-          JOIN descuentos d ON nd.descuento_id = d.id
-          WHERE nd.cliente_id = c.id AND d.activo = true),
+          FROM descuentos d
+          WHERE d.activo = true AND c.monto_acumulado >= d.monto_minimo_requerido),
           '[]'::json
         ) AS descuentos_info
        FROM clientes c
@@ -296,16 +291,14 @@ router.post('/:id/ingreso', async (req, res) => {
 
     // Consultar descuentos activos del cliente para incluir en la respuesta
     const { rows: descInfo } = await client.query(
-      `SELECT (SELECT COUNT(*) FROM notificaciones_descuento nd
-        JOIN descuentos d ON nd.descuento_id = d.id
-        WHERE nd.cliente_id = $1 AND d.activo = true) AS descuentos_activos,
+      `SELECT (SELECT COUNT(*) FROM descuentos d
+        WHERE d.activo = true AND $1 >= d.monto_minimo_requerido) AS descuentos_activos,
        COALESCE(
         (SELECT json_agg(json_build_object('nombre', d.nombre, 'porcentaje', d.porcentaje))
-         FROM notificaciones_descuento nd
-         JOIN descuentos d ON nd.descuento_id = d.id
-         WHERE nd.cliente_id = $1 AND d.activo = true),
+         FROM descuentos d
+         WHERE d.activo = true AND $1 >= d.monto_minimo_requerido),
         '[]'::json) AS descuentos_info`,
-      [req.params.id]
+      [cliente.monto_acumulado]
     );
 
     await client.query('COMMIT');

@@ -17,9 +17,8 @@ router.get('/', async (req, res) => {
     const { rows: clientas } = await pool.query(
       `SELECT c.id, c.nombre_completo, c.celular, c.monto_acumulado, c.visitas_totales, c.fecha_registro,
               u.nombre AS creado_por_nombre,
-              (SELECT COUNT(*) FROM notificaciones_descuento nd
-               JOIN descuentos d ON nd.descuento_id = d.id
-               WHERE nd.cliente_id = c.id AND d.activo = true) AS descuentos_activos
+              (SELECT COUNT(*) FROM descuentos d
+               WHERE d.activo = true AND c.monto_acumulado >= d.monto_minimo_requerido) AS descuentos_activos
        FROM clientes c
        LEFT JOIN usuarios u ON c.creado_por = u.id
        ORDER BY c.monto_acumulado DESC
@@ -56,9 +55,8 @@ router.get('/mi-equipo', async (req, res) => {
 
     const { rows: clientas } = await pool.query(
       `SELECT c.id, c.nombre_completo, c.celular, c.monto_acumulado, c.visitas_totales, c.fecha_registro,
-              (SELECT COUNT(*) FROM notificaciones_descuento nd
-               JOIN descuentos d ON nd.descuento_id = d.id
-               WHERE nd.cliente_id = c.id AND d.activo = true) AS descuentos_activos
+              (SELECT COUNT(*) FROM descuentos d
+               WHERE d.activo = true AND c.monto_acumulado >= d.monto_minimo_requerido) AS descuentos_activos
        FROM clientes c
        WHERE c.creado_por = $1
        ORDER BY c.monto_acumulado DESC`,
