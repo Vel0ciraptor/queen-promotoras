@@ -34,7 +34,10 @@ router.get('/', async (req, res) => {
         u.nombre AS creado_por_nombre,
         (SELECT COUNT(*) FROM notificaciones_descuento nd
          JOIN descuentos d ON nd.descuento_id = d.id
-         WHERE nd.cliente_id = c.id AND d.activo = true AND nd.visto = false) AS descuentos_activos,
+         WHERE nd.cliente_id = c.id AND d.activo = true) AS descuentos_activos,
+        (SELECT COUNT(*) FROM notificaciones_descuento nd
+         JOIN descuentos d ON nd.descuento_id = d.id
+         WHERE nd.cliente_id = c.id AND d.activo = true AND nd.visto = false) AS notificaciones_nuevas,
         COALESCE(
           (SELECT json_agg(json_build_object(
             'nombre', d.nombre,
@@ -42,7 +45,7 @@ router.get('/', async (req, res) => {
           ))
           FROM notificaciones_descuento nd
           JOIN descuentos d ON nd.descuento_id = d.id
-          WHERE nd.cliente_id = c.id AND d.activo = true AND nd.visto = false),
+          WHERE nd.cliente_id = c.id AND d.activo = true),
           '[]'::json
         ) AS descuentos_info
        FROM clientes c
@@ -295,12 +298,12 @@ router.post('/:id/ingreso', async (req, res) => {
     const { rows: descInfo } = await client.query(
       `SELECT (SELECT COUNT(*) FROM notificaciones_descuento nd
         JOIN descuentos d ON nd.descuento_id = d.id
-        WHERE nd.cliente_id = $1 AND d.activo = true AND nd.visto = false) AS descuentos_activos,
+        WHERE nd.cliente_id = $1 AND d.activo = true) AS descuentos_activos,
        COALESCE(
         (SELECT json_agg(json_build_object('nombre', d.nombre, 'porcentaje', d.porcentaje))
          FROM notificaciones_descuento nd
          JOIN descuentos d ON nd.descuento_id = d.id
-         WHERE nd.cliente_id = $1 AND d.activo = true AND nd.visto = false),
+         WHERE nd.cliente_id = $1 AND d.activo = true),
         '[]'::json) AS descuentos_info`,
       [req.params.id]
     );
