@@ -293,6 +293,25 @@ p { line-height: 1.6; }
   font-size: 1.4rem; margin-bottom: 0.75rem;
 }
 
+/* ── Carrusel (historial de ventas) ─────────────────────────── */
+.carrusel-scroll {
+  display: flex;
+  gap: 0.75rem;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 0.35rem;
+  scrollbar-width: none;
+}
+.carrusel-scroll::-webkit-scrollbar { display: none; }
+.carrusel-scroll > * {
+  flex: 0 0 min(78%, 240px);
+  scroll-snap-align: start;
+}
+@media (min-width: 640px) {
+  .carrusel-scroll > * { flex: 0 0 min(32%, 230px); }
+}
+
 /* ── Table ──────────────────────────────────────────────────── */
 .table-wrapper { overflow-x: auto; border-radius: 1.25rem; border: 1px solid var(--border); }
 table { width: 100%; border-collapse: collapse; background: var(--surface); }
