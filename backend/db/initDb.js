@@ -38,6 +38,29 @@ function splitStatements(sql) {
   return statements;
 }
 
+// Ejecuta un archivo de migración dentro de una transacción abierta.
+// Es idempotente: ignora errores de "ya existe".
+async function ejecutarArchivoMigracion(client, nombreArchivo) {
+  const filePath = path.join(__dirname, nombreArchivo);
+  const sql = fs.readFileSync(filePath, 'utf8');
+  const statements = splitStatements(sql);
+
+  await client.query('BEGIN');
+  for (const stmt of statements) {
+    const clean = stmt.replace(/^--.*$/gm, '').trim();
+    if (!clean) continue;
+    try {
+      await client.query(stmt + ';');
+    } catch (err) {
+      if (err.code === '42710' || err.code === '42P07' || err.code === '42701' || err.message?.includes('already exists')) {
+        continue;
+      }
+      throw err;
+    }
+  }
+  await client.query('COMMIT');
+}
+
 export async function runMigrations() {
   console.log('🔧 [MIGRACIONES] Iniciando...');
   console.log(`🔧 [MIGRACIONES] DB_HOST=${process.env.DB_HOST || 'NO DEFINIDO'} DB_NAME=${process.env.DB_NAME || 'NO DEFINIDO'} DB_USER=${process.env.DB_USER || 'NO DEFINIDO'} DB_PORT=${process.env.DB_PORT || 'NO DEFINIDO'}`);
@@ -127,6 +150,22 @@ export async function runMigrations() {
         console.log('✅ Migración ranking completada.');
       } else {
         console.log('✅ Migraciones ya aplicadas.');
+      }
+
+      // Migración: nacionalidad y departamento de las clientas
+      const { rows: ubicacionCols } = await client.query(`
+        SELECT EXISTS (
+          SELECT FROM information_schema.columns
+          WHERE table_schema = 'public' AND table_name = 'clientes' AND column_name = 'nacionalidad'
+        );
+      `);
+
+      if (!ubicacionCols[0]?.exists) {
+        console.log('📌 Ejecutando migración: nacionalidad + departamento...');
+        await ejecutarArchivoMigracion(client, 'migration_ubicacion.sql');
+        console.log('✅ Migración ubicación completada.');
+      } else {
+        console.log('✅ Migración ubicación ya aplicada.');
       }
     }
   } catch (err) {

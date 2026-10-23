@@ -1,6 +1,7 @@
 import express from 'express';
 import pool from '../db/pool.js';
 import { authMiddleware, requireRol } from '../middleware/auth.js';
+import { normalizarDepartamento, normalizarNacionalidad } from '../constants/ubicaciones.js';
 
 const router = express.Router();
 router.use(authMiddleware);
@@ -67,7 +68,7 @@ router.get('/', async (req, res) => {
 router.get('/export', requireRol('admin'), async (req, res) => {
   try {
     const { rows } = await pool.query(
-      `SELECT c.id, c.nombre_completo, c.carnet_identidad, c.celular, c.monto_acumulado, c.visitas_totales, c.fecha_registro,
+      `SELECT c.id, c.nombre_completo, c.carnet_identidad, c.celular, c.nacionalidad, c.departamento, c.monto_acumulado, c.visitas_totales, c.fecha_registro,
               u.nombre AS creado_por_nombre
        FROM clientes c
        LEFT JOIN usuarios u ON c.creado_por = u.id
@@ -172,6 +173,12 @@ router.post('/import', requireRol('admin'), async (req, res) => {
       const ci = findVal(row,
         'ci', 'c.i', 'c.i.', 'carnet', 'carnetidentidad', 'carnet identidad', 'carnet de identidad', 'cedula', 'cedula', 'dni'
       );
+      const nacionalidad = findVal(row,
+        'nacionalidad', 'nacionalidad de la clienta', 'nacion', 'nación', 'pais', 'país'
+      );
+      const departamento = findVal(row,
+        'departamento', 'departamento de origen', 'depto', 'departamento donde viene', 'provincia'
+      );
       const montoCompra = parseFloat(findVal(row, 'monto', 'monto de compra', 'montodecompra', 'monto_compra', 'total', 'compra') || 0) || 0;
       const vecesCompradas = parseInt(findVal(row, 'veces que compro', 'vecesquecompro', 'veces_compradas', 'veces compradas', 'visitas', 'compras', 'totalcompras') || 0) || 0;
       const fechaRegistro = findVal(row, 'fecha de registro', 'fechaderegistro', 'fecha_registro', 'fecha', 'fechacompra', 'fecha de compra');
@@ -184,9 +191,9 @@ router.post('/import', requireRol('admin'), async (req, res) => {
 
       try {
         const { rows } = await client.query(
-          `INSERT INTO clientes (nombre_completo, carnet_identidad, celular, monto_acumulado, visitas_totales, fecha_registro, creado_por)
-           VALUES ($1, $2, $3, $4, $5, COALESCE($6, NOW()), $7) RETURNING *`,
-          [nombre, ci, telefono, montoCompra, vecesCompradas, fechaISO, req.user.id]
+          `INSERT INTO clientes (nombre_completo, carnet_identidad, celular, nacionalidad, departamento, monto_acumulado, visitas_totales, fecha_registro, creado_por)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, COALESCE($8, NOW()), $9) RETURNING *`,
+          [nombre, ci, telefono, normalizarNacionalidad(nacionalidad), normalizarDepartamento(departamento), montoCompra, vecesCompradas, fechaISO, req.user.id]
         );
 
         const cliente = rows[0];
@@ -225,7 +232,7 @@ router.post('/import', requireRol('admin'), async (req, res) => {
 
 // POST /api/clientes
 router.post('/', async (req, res) => {
-  const { nombre_completo, carnet_identidad, celular, monto_inicial = 0 } = req.body;
+  const { nombre_completo, carnet_identidad, celular, nacionalidad, departamento, monto_inicial = 0 } = req.body;
   if (!nombre_completo) return res.status(400).json({ error: 'Nombre requerido' });
 
   const client = await pool.connect();
@@ -233,9 +240,18 @@ router.post('/', async (req, res) => {
     await client.query('BEGIN');
 
     const { rows } = await client.query(
-      `INSERT INTO clientes (nombre_completo, carnet_identidad, celular, monto_acumulado, visitas_totales, creado_por)
-       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-      [nombre_completo, carnet_identidad || null, celular || null, monto_inicial, monto_inicial > 0 ? 1 : 0, req.user.id]
+      `INSERT INTO clientes (nombre_completo, carnet_identidad, celular, nacionalidad, departamento, monto_acumulado, visitas_totales, creado_por)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+      [
+        nombre_completo,
+        carnet_identidad || null,
+        celular || null,
+        normalizarNacionalidad(nacionalidad),
+        normalizarDepartamento(departamento),
+        monto_inicial,
+        monto_inicial > 0 ? 1 : 0,
+        req.user.id
+      ]
     );
 
     const cliente = rows[0];
@@ -322,10 +338,13 @@ router.post('/:id/ingreso', async (req, res) => {
 
 // PUT /api/clientes/:id — solo admin, requiere comentario
 router.put('/:id', requireRol('admin'), async (req, res) => {
-  const { nombre_completo, carnet_identidad, celular, comentario } = req.body;
+  const { nombre_completo, carnet_identidad, celular, nacionalidad, departamento, comentario } = req.body;
   if (!comentario || comentario.trim().length < 3) {
     return res.status(400).json({ error: 'El comentario es obligatorio para editar' });
   }
+
+  const nac = nacionalidad === undefined ? undefined : normalizarNacionalidad(nacionalidad);
+  const dep = departamento === undefined ? undefined : normalizarDepartamento(departamento);
 
   const client = await pool.connect();
   try {
@@ -335,9 +354,9 @@ router.put('/:id', requireRol('admin'), async (req, res) => {
     if (!prev.length) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'No encontrado' }); }
     const old = prev[0];
 
-    const campos = { nombre_completo, carnet_identidad, celular };
+    const campos = { nombre_completo, carnet_identidad, celular, nacionalidad: nac, departamento: dep };
     for (const [campo, valor] of Object.entries(campos)) {
-      if (valor !== undefined && valor !== old[campo]) {
+      if (valor !== undefined && (valor || null) !== (old[campo] || null)) {
         await client.query(
           `INSERT INTO ediciones_admin (cliente_id, admin_id, campo_modificado, valor_anterior, valor_nuevo, comentario)
            VALUES ($1, $2, $3, $4, $5, $6)`,
@@ -348,12 +367,21 @@ router.put('/:id', requireRol('admin'), async (req, res) => {
 
     const { rows } = await client.query(
       `UPDATE clientes SET
-        nombre_completo = COALESCE($1, nombre_completo),
-        carnet_identidad = COALESCE($2, carnet_identidad),
-        celular = COALESCE($3, celular),
+        nombre_completo   = CASE WHEN $1::boolean  THEN COALESCE($2, nombre_completo) ELSE nombre_completo END,
+        carnet_identidad  = CASE WHEN $3::boolean  THEN $4 ELSE carnet_identidad END,
+        celular           = CASE WHEN $5::boolean  THEN $6 ELSE celular END,
+        nacionalidad      = CASE WHEN $7::boolean  THEN $8 ELSE nacionalidad END,
+        departamento      = CASE WHEN $9::boolean  THEN $10 ELSE departamento END,
         actualizado_en = NOW()
-       WHERE id = $4 RETURNING *`,
-      [nombre_completo || null, carnet_identidad || null, celular || null, req.params.id]
+       WHERE id = $11 RETURNING *`,
+      [
+        nombre_completo !== undefined, nombre_completo || null,
+        carnet_identidad !== undefined, carnet_identidad || null,
+        celular !== undefined, celular || null,
+        nacionalidad !== undefined, nac,
+        departamento !== undefined, dep,
+        req.params.id
+      ]
     );
 
     await client.query('COMMIT');

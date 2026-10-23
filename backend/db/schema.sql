@@ -19,6 +19,8 @@ CREATE TABLE clientes (
   nombre_completo VARCHAR(150) NOT NULL,
   carnet_identidad VARCHAR(30),
   celular VARCHAR(20),
+  nacionalidad VARCHAR(30),
+  departamento VARCHAR(50),
   monto_acumulado DECIMAL(12,2) DEFAULT 0,
   visitas_totales INT DEFAULT 0,
   fecha_registro TIMESTAMP DEFAULT NOW(),

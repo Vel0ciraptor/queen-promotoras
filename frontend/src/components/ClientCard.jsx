@@ -126,6 +126,8 @@ export default function ClientCard({ cliente, onClick, onCompletar }) {
           ) : (
             <span style={{ color: '#D97706', fontStyle: 'italic' }}>📱 Sin cel</span>
           )}
+          {cliente.departamento && <span>📍 {cliente.departamento}</span>}
+          {cliente.nacionalidad && <span>🌎 {cliente.nacionalidad}</span>}
         </div>
       </div>
 

@@ -2,10 +2,14 @@ import { useState } from 'react';
 import { X } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 import api from '../lib/api';
+import { DEPARTAMENTOS, NACIONALIDADES } from '../lib/ubicaciones';
 
 export default function NuevoClienteModal({ onClose, onCreado }) {
   const toast = useToast();
-  const [form, setForm] = useState({ nombre_completo: '', carnet_identidad: '', celular: '', monto_inicial: '' });
+  const [form, setForm] = useState({
+    nombre_completo: '', carnet_identidad: '', celular: '',
+    nacionalidad: 'Boliviana', otroPais: '', departamento: '', monto_inicial: ''
+  });
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
 
@@ -18,6 +22,9 @@ export default function NuevoClienteModal({ onClose, onCreado }) {
     try {
       const { data } = await api.post('/clientes', {
         ...form,
+        nacionalidad: form.nacionalidad === 'Otra'
+          ? (form.otroPais.trim() || 'Otra')
+          : form.nacionalidad,
         monto_inicial: parseFloat(form.monto_inicial) || 0
       });
       setSuccess(true);
@@ -59,6 +66,27 @@ export default function NuevoClienteModal({ onClose, onCreado }) {
               <label className="form-label" htmlFor="nc-celular">Celular</label>
               <input id="nc-celular" className="input" type="tel" placeholder="70000000" value={form.celular} onChange={set('celular')} />
             </div>
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0.75rem' }}>
+              <div className="form-group">
+                <label className="form-label" htmlFor="nc-nacionalidad">Nacionalidad</label>
+                <select id="nc-nacionalidad" className="input" value={form.nacionalidad} onChange={set('nacionalidad')}>
+                  {NACIONALIDADES.map(n => <option key={n} value={n}>{n}</option>)}
+                </select>
+              </div>
+              <div className="form-group">
+                <label className="form-label" htmlFor="nc-departamento">Departamento</label>
+                <select id="nc-departamento" className="input" value={form.departamento} onChange={set('departamento')}>
+                  <option value="">Sin especificar</option>
+                  {DEPARTAMENTOS.map(d => <option key={d} value={d}>{d}</option>)}
+                </select>
+              </div>
+            </div>
+            {form.nacionalidad === 'Otra' && (
+              <div className="form-group">
+                <label className="form-label" htmlFor="nc-otro-pais">¿De qué país viene la compra? (opcional)</label>
+                <input id="nc-otro-pais" className="input" placeholder="Ej: Uruguay, Alemania..." maxLength={30} value={form.otroPais} onChange={set('otroPais')} />
+              </div>
+            )}
             <div className="form-group">
               <label className="form-label" htmlFor="nc-monto">Monto inicial (Bs.)</label>
               <input id="nc-monto" className="input" type="number" min="0" step="0.01" placeholder="0" value={form.monto_inicial} onChange={set('monto_inicial')} />
