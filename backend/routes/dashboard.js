@@ -49,17 +49,31 @@ router.get('/ingresos-tiempo', async (req, res) => {
 });
 
 // GET /api/dashboard/por-promotora
+// Los totales se calculan por separado (CTEs) y luego se unen: hacer un JOIN
+// directo de clientes + historial_ingresos multiplicaba el monto por la
+// cantidad de clientas de cada promotora (producto cartesiano).
 router.get('/por-promotora', async (req, res) => {
   try {
     const { rows } = await pool.query(
-      `SELECT u.nombre,
-              COUNT(DISTINCT c.id) AS clientes_registrados,
-              COALESCE(SUM(h.monto), 0) AS monto_total
+      `WITH registros AS (
+         SELECT creado_por AS user_id, COUNT(*) AS total
+         FROM clientes
+         WHERE creado_por IS NOT NULL
+         GROUP BY creado_por
+       ),
+       ventas AS (
+         SELECT registrado_por AS user_id, COALESCE(SUM(monto), 0) AS total
+         FROM historial_ingresos
+         WHERE registrado_por IS NOT NULL
+         GROUP BY registrado_por
+       )
+       SELECT u.nombre,
+              COALESCE(r.total, 0) AS clientes_registrados,
+              COALESCE(v.total, 0) AS monto_total
        FROM usuarios u
-       LEFT JOIN clientes c ON c.creado_por = u.id
-       LEFT JOIN historial_ingresos h ON h.registrado_por = u.id
+       LEFT JOIN registros r ON r.user_id = u.id
+       LEFT JOIN ventas v ON v.user_id = u.id
        WHERE u.rol IN ('promotora', 'promotora_lider')
-       GROUP BY u.id, u.nombre
        ORDER BY monto_total DESC`
     );
     res.json({ data: rows });
