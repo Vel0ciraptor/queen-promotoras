@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Search, Edit2, Upload, Download, X, Trash2, ArrowUpDown, ArrowUp, ArrowDown, User, Phone, CreditCard, Calendar, ShoppingBag, LayoutGrid, Table as TableIcon, MapPin, History } from 'lucide-react';
+import { Search, Edit2, Upload, Download, X, Trash2, ArrowUpDown, ArrowUp, ArrowDown, Phone, CreditCard, Calendar, ShoppingBag, LayoutGrid, Table as TableIcon, MapPin, History } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import api from '../../lib/api';
 import { useToast } from '../../context/ToastContext';
@@ -238,7 +238,10 @@ export default function AdminClientes() {
   const [viendoDetalle, setViendoDetalle] = useState(null);
   const [sortBy, setSortBy] = useState('fecha');
   const [sortOrder, setSortOrder] = useState('desc');
-  const [viewMode, setViewMode] = useState('auto'); // 'auto', 'cards', 'table'
+  // Tabla en escritorio, tarjetas en móvil/tablet (y el usuario puede cambiarlo cuando quiera)
+  const [viewMode, setViewMode] = useState(() =>
+    typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches ? 'table' : 'cards'
+  );
 
   const fetch = useCallback(async (query, pg, sort = sortBy, order = sortOrder) => {
     setLoading(true);
@@ -274,6 +277,18 @@ export default function AdminClientes() {
     if (sortBy !== column) return <ArrowUpDown size={12} style={{ opacity: 0.4 }} />;
     return sortOrder === 'desc' ? <ArrowDown size={12} /> : <ArrowUp size={12} />;
   };
+
+  // Encabezado ordenable: el contenido va en un span (nunca flex directo en <th>,
+  // eso rompía la alineación de las columnas)
+  const thOrden = (column, label, extraClass = '') => (
+    <th
+      className={`th-sortable ${extraClass}`.trim()}
+      onClick={() => handleSort(column)}
+      aria-sort={sortBy === column ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
+    >
+      <span className="th-sort">{label}<SortIcon column={column} /></span>
+    </th>
+  );
 
   const handleGuardado = updated => {
     setClientes(prev => prev.map(c => c.id === updated.id ? { ...c, ...updated } : c));
@@ -399,20 +414,28 @@ export default function AdminClientes() {
       </div>
 
       <div style={{ display:'flex', alignItems:'center', gap:'0.75rem' }}>
-        <div className="input-wrapper" style={{ flex: 1 }}>
+        <div className="input-wrapper" style={{ flex: 1, minWidth: 0 }}>
           <Search size={18} className="input-icon"/>
           <input id="admin-buscar-cliente" className="input input-search" placeholder="Buscar por nombre, CI o celular..." value={q} onChange={handleSearch} />
         </div>
 
-        {/* Toggle para cambiar vista si se desea en desktop/mobile */}
-        <div className="view-mode-toggle" style={{ display:'flex', background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'0.875rem', padding:'0.2rem' }}>
+        {/* Selector de vista: tarjetas (móvil) o tabla (escritorio) */}
+        <div className="view-mode-toggle" role="group" aria-label="Formato de la lista">
           <button
-            className={`btn btn-ghost ${viewMode === 'cards' || viewMode === 'auto' ? 'active' : ''}`}
-            onClick={() => setViewMode(viewMode === 'cards' ? 'table' : 'cards')}
-            style={{ padding:'0.4rem 0.6rem', border:'none', minHeight:'unset', fontSize:'0.75rem', borderRadius:'0.675rem' }}
-            title="Cambiar formato de vista"
+            className={`btn btn-ghost ${viewMode === 'cards' ? 'active' : ''}`}
+            onClick={() => setViewMode('cards')}
+            aria-pressed={viewMode === 'cards'}
+            title="Vista tarjetas"
           >
-            {viewMode === 'cards' ? <LayoutGrid size={16} /> : <TableIcon size={16} />}
+            <LayoutGrid size={16}/> <span className="view-mode-label">Tarjetas</span>
+          </button>
+          <button
+            className={`btn btn-ghost ${viewMode === 'table' ? 'active' : ''}`}
+            onClick={() => setViewMode('table')}
+            aria-pressed={viewMode === 'table'}
+            title="Vista tabla"
+          >
+            <TableIcon size={16}/> <span className="view-mode-label">Tabla</span>
           </button>
         </div>
       </div>
@@ -523,41 +546,31 @@ export default function AdminClientes() {
             <table>
               <thead>
                 <tr>
-                  <th onClick={() => handleSort('nombre')} style={{ cursor: 'pointer', userSelect: 'none', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                    Nombre <SortIcon column="nombre" />
-                  </th>
-                  <th onClick={() => handleSort('carnet')} style={{ cursor: 'pointer', userSelect: 'none', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                    CI <SortIcon column="carnet" />
-                  </th>
-                  <th>Celular</th>
-                  <th>Origen</th>
-                  <th onClick={() => handleSort('monto')} style={{ cursor: 'pointer', userSelect: 'none', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                    Acumulado <SortIcon column="monto" />
-                  </th>
-                  <th onClick={() => handleSort('visitas')} style={{ cursor: 'pointer', userSelect: 'none', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                    Visitas <SortIcon column="visitas" />
-                  </th>
-                  <th onClick={() => handleSort('fecha')} style={{ cursor: 'pointer', userSelect: 'none', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                    Registro <SortIcon column="fecha" />
-                  </th>
-                  <th></th>
+                  {thOrden('nombre', 'Nombre')}
+                  {thOrden('carnet', 'CI')}
+                  <th><span className="th-sort">Celular</span></th>
+                  <th className="table-hide-md"><span className="th-sort">Origen</span></th>
+                  {thOrden('monto', 'Acumulado', 'td-num')}
+                  {thOrden('visitas', 'Visitas', 'td-num')}
+                  {thOrden('fecha', 'Registro', 'table-hide-md')}
+                  <th className="th-actions"><span className="th-sort">Acciones</span></th>
                 </tr>
               </thead>
               <tbody>
                 {clientes.map(c => (
                   <tr key={c.id}>
-                    <td style={{ fontWeight:700 }}>{c.nombre_completo}</td>
-                    <td style={{ color:'var(--text-muted)' }}>{c.carnet_identidad || '—'}</td>
-                    <td style={{ color:'var(--text-muted)' }}>{c.celular || '—'}</td>
-                    <td style={{ color:'var(--text-muted)', fontSize:'0.8rem' }}>
+                    <td className="td-name" title={c.nombre_completo} style={{ fontWeight:700 }}>{c.nombre_completo}</td>
+                    <td style={{ color:'var(--text-muted)', whiteSpace:'nowrap' }}>{c.carnet_identidad || '—'}</td>
+                    <td style={{ color:'var(--text-muted)', whiteSpace:'nowrap' }}>{c.celular || '—'}</td>
+                    <td className="table-hide-md" style={{ color:'var(--text-muted)', fontSize:'0.8rem' }}>
                       {[c.departamento, c.nacionalidad].filter(Boolean).join(' · ') || '—'}
                     </td>
-                    <td style={{ fontWeight:800, color:'var(--pink-strong)', cursor:'pointer' }} onClick={() => setEditandoMonto(c)} title="Ajustar monto">
+                    <td className="td-num" style={{ fontWeight:800, color:'var(--pink-strong)', cursor:'pointer' }} onClick={() => setEditandoMonto(c)} title="Ajustar monto">
                       {fmt(c.monto_acumulado)}
                     </td>
-                    <td style={{ color:'var(--text-muted)' }}>{c.visitas_totales}</td>
-                    <td style={{ color:'var(--text-muted)', fontSize:'0.8rem' }}>{fmtDate(c.fecha_registro)}</td>
-                    <td>
+                    <td className="td-num" style={{ color:'var(--text-muted)' }}>{c.visitas_totales}</td>
+                    <td className="table-hide-md" style={{ color:'var(--text-muted)', fontSize:'0.8rem', whiteSpace:'nowrap' }}>{fmtDate(c.fecha_registro)}</td>
+                    <td className="td-actions">
                       <div style={{ display:'flex', gap:'0.25rem' }}>
                         <button
                           className="btn btn-ghost btn-icon"
