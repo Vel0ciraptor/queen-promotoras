@@ -1,16 +1,29 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Search, Edit2, Upload, Download, X, Trash2, ArrowUpDown, ArrowUp, ArrowDown, User, Phone, CreditCard, Calendar, ShoppingBag, LayoutGrid, Table as TableIcon } from 'lucide-react';
+import { Search, Edit2, Upload, Download, X, Trash2, ArrowUpDown, ArrowUp, ArrowDown, User, Phone, CreditCard, Calendar, ShoppingBag, LayoutGrid, Table as TableIcon, MapPin, History } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import api from '../../lib/api';
 import { useToast } from '../../context/ToastContext';
 import ImportarExcelModal from '../../components/ImportarExcelModal';
+import ClienteDetalleModal from '../../components/ClienteDetalleModal';
+import { DEPARTAMENTOS, NACIONALIDADES } from '../../lib/ubicaciones';
 
 const fmt = n => new Intl.NumberFormat('es-BO', { style: 'currency', currency: 'BOB', minimumFractionDigits: 0 }).format(n || 0);
 const fmtDate = d => new Date(d).toLocaleDateString('es-BO', { day: '2-digit', month: 'short', year: 'numeric' });
 
 function EditarClienteModal({ cliente, onClose, onGuardado }) {
   const toast = useToast();
-  const [form, setForm] = useState({ nombre_completo: cliente.nombre_completo, carnet_identidad: cliente.carnet_identidad || '', celular: cliente.celular || '', comentario: '' });
+  // Si el valor guardado no está en la lista (país escrito a mano), marcamos "Otra"
+  const nacGuardada = cliente.nacionalidad || '';
+  const esOtroPais = nacGuardada !== '' && nacGuardada !== 'Otra' && !NACIONALIDADES.includes(nacGuardada);
+  const [form, setForm] = useState({
+    nombre_completo: cliente.nombre_completo,
+    carnet_identidad: cliente.carnet_identidad || '',
+    celular: cliente.celular || '',
+    nacionalidad: esOtroPais ? 'Otra' : nacGuardada,
+    otroPais: esOtroPais ? nacGuardada : '',
+    departamento: cliente.departamento || '',
+    comentario: ''
+  });
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async e => {
@@ -18,7 +31,12 @@ function EditarClienteModal({ cliente, onClose, onGuardado }) {
     if (!form.comentario.trim()) return toast.error('El comentario es obligatorio');
     setLoading(true);
     try {
-      const { data } = await api.put(`/clientes/${cliente.id}`, form);
+      const { data } = await api.put(`/clientes/${cliente.id}`, {
+        ...form,
+        nacionalidad: form.nacionalidad === 'Otra'
+          ? (form.otroPais.trim() || 'Otra')
+          : form.nacionalidad
+      });
       onGuardado(data.cliente);
       toast.success('Cliente actualizada');
     } catch (err) {
@@ -52,6 +70,28 @@ function EditarClienteModal({ cliente, onClose, onGuardado }) {
             <label className="form-label">Celular</label>
             <input className="input" value={form.celular} onChange={e => setForm(f=>({...f,celular:e.target.value}))} />
           </div>
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0.75rem' }}>
+            <div className="form-group">
+              <label className="form-label">Nacionalidad</label>
+              <select className="input" value={form.nacionalidad} onChange={e => setForm(f=>({...f,nacionalidad:e.target.value}))}>
+                <option value="">Sin especificar</option>
+                {NACIONALIDADES.map(n => <option key={n} value={n}>{n}</option>)}
+              </select>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Departamento</label>
+              <select className="input" value={form.departamento} onChange={e => setForm(f=>({...f,departamento:e.target.value}))}>
+                <option value="">Sin especificar</option>
+                {DEPARTAMENTOS.map(d => <option key={d} value={d}>{d}</option>)}
+              </select>
+            </div>
+          </div>
+          {form.nacionalidad === 'Otra' && (
+            <div className="form-group">
+              <label className="form-label">¿De qué país viene la compra? (opcional)</label>
+              <input className="input" maxLength={30} placeholder="Ej: Uruguay, Alemania..." value={form.otroPais} onChange={e => setForm(f=>({...f,otroPais:e.target.value}))} />
+            </div>
+          )}
           <div className="form-group">
             <label className="form-label" style={{ color:'var(--magenta-deep)' }}>Motivo / Comentario * (obligatorio)</label>
             <textarea
@@ -195,6 +235,7 @@ export default function AdminClientes() {
   const [showImport, setShowImport] = useState(false);
   const [editandoMonto, setEditandoMonto] = useState(null);
   const [eliminando, setEliminando] = useState(null);
+  const [viendoDetalle, setViendoDetalle] = useState(null);
   const [sortBy, setSortBy] = useState('fecha');
   const [sortOrder, setSortOrder] = useState('desc');
   const [viewMode, setViewMode] = useState('auto'); // 'auto', 'cards', 'table'
@@ -256,6 +297,11 @@ export default function AdminClientes() {
     setEliminando(null);
   };
 
+  // Mantiene la lista al día cuando el detalle corrige/elimina una compra
+  const sincronizarCliente = updated => {
+    setClientes(prev => prev.map(c => c.id === updated.id ? { ...c, ...updated } : c));
+  };
+
   // Exportar Base de Datos Completa a Excel
   const handleExportBD = async () => {
     setExporting(true);
@@ -266,6 +312,8 @@ export default function AdminClientes() {
         'Nombre Completo': c.nombre_completo,
         'CI': c.carnet_identidad || 'N/A',
         'Celular': c.celular || 'N/A',
+        'Nacionalidad': c.nacionalidad || 'N/A',
+        'Departamento': c.departamento || 'N/A',
         'Monto Acumulado (Bs)': parseFloat(c.monto_acumulado || 0),
         'Visitas Totales': c.visitas_totales || 0,
         'Fecha Registro': new Date(c.fecha_registro).toLocaleString('es-BO'),
@@ -396,6 +444,15 @@ export default function AdminClientes() {
                     <button
                       className="btn btn-ghost btn-icon"
                       style={{ minHeight:'unset', padding:'0.4rem' }}
+                      onClick={() => setViendoDetalle(c)}
+                      title="Ver historial de compras"
+                      id={`btn-historial-${c.id}`}
+                    >
+                      <History size={15}/>
+                    </button>
+                    <button
+                      className="btn btn-ghost btn-icon"
+                      style={{ minHeight:'unset', padding:'0.4rem' }}
                       onClick={() => setEditando(c)}
                       title="Editar datos"
                     >
@@ -425,6 +482,15 @@ export default function AdminClientes() {
                       <Phone size={12} /> Celular
                     </div>
                     <div style={{ fontWeight:700, fontSize:'0.85rem', marginTop:'0.1rem' }}>{c.celular || '—'}</div>
+                  </div>
+
+                  <div style={{ gridColumn:'1 / -1' }}>
+                    <div style={{ fontSize:'0.72rem', color:'var(--text-muted)', fontWeight:700, display:'flex', alignItems:'center', gap:'0.25rem' }}>
+                      <MapPin size={12} /> Origen
+                    </div>
+                    <div style={{ fontWeight:700, fontSize:'0.85rem', marginTop:'0.1rem' }}>
+                      {[c.departamento, c.nacionalidad].filter(Boolean).join(' · ') || '—'}
+                    </div>
                   </div>
                 </div>
 
@@ -464,6 +530,7 @@ export default function AdminClientes() {
                     CI <SortIcon column="carnet" />
                   </th>
                   <th>Celular</th>
+                  <th>Origen</th>
                   <th onClick={() => handleSort('monto')} style={{ cursor: 'pointer', userSelect: 'none', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                     Acumulado <SortIcon column="monto" />
                   </th>
@@ -482,6 +549,9 @@ export default function AdminClientes() {
                     <td style={{ fontWeight:700 }}>{c.nombre_completo}</td>
                     <td style={{ color:'var(--text-muted)' }}>{c.carnet_identidad || '—'}</td>
                     <td style={{ color:'var(--text-muted)' }}>{c.celular || '—'}</td>
+                    <td style={{ color:'var(--text-muted)', fontSize:'0.8rem' }}>
+                      {[c.departamento, c.nacionalidad].filter(Boolean).join(' · ') || '—'}
+                    </td>
                     <td style={{ fontWeight:800, color:'var(--pink-strong)', cursor:'pointer' }} onClick={() => setEditandoMonto(c)} title="Ajustar monto">
                       {fmt(c.monto_acumulado)}
                     </td>
@@ -489,6 +559,15 @@ export default function AdminClientes() {
                     <td style={{ color:'var(--text-muted)', fontSize:'0.8rem' }}>{fmtDate(c.fecha_registro)}</td>
                     <td>
                       <div style={{ display:'flex', gap:'0.25rem' }}>
+                        <button
+                          className="btn btn-ghost btn-icon"
+                          style={{ minHeight:'unset', padding:'0.4rem' }}
+                          onClick={() => setViendoDetalle(c)}
+                          title="Ver historial de compras"
+                          id={`btn-historial-tabla-${c.id}`}
+                        >
+                          <History size={15}/>
+                        </button>
                         <button
                           className="btn btn-ghost btn-icon"
                           style={{ minHeight:'unset', padding:'0.4rem' }}
@@ -539,6 +618,15 @@ export default function AdminClientes() {
 
       {eliminando && (
         <EliminarClienteModal cliente={eliminando} onClose={() => setEliminando(null)} onEliminado={handleEliminado} />
+      )}
+
+      {viendoDetalle && (
+        <ClienteDetalleModal
+          cliente={viendoDetalle}
+          onClose={() => setViendoDetalle(null)}
+          onIngresoRegistrado={sincronizarCliente}
+          onClienteActualizado={sincronizarCliente}
+        />
       )}
 
       {showImport && (

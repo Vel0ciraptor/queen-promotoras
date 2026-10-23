@@ -11,6 +11,13 @@ async function limpiarDescuentos() {
   await pool.query(`UPDATE descuentos SET activo = false WHERE activo = true AND fecha_expiracion IS NOT NULL AND fecha_expiracion < NOW()`);
 }
 
+// Date → "YYYY-MM-DD HH:MM:SS" en hora local del servidor (= como se guarda el TIMESTAMP)
+function fechaTexto(d) {
+  if (!(d instanceof Date)) return d;
+  const p = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+}
+
 // GET /api/clientes?q=&page=1&limit=7&sortBy=fecha_registro&sortOrder=desc
 const SORTABLE_COLUMNS = {
   nombre: 'c.nombre_completo',
@@ -488,6 +495,161 @@ router.patch('/:id/monto', requireRol('admin'), async (req, res) => {
 
     await client.query('COMMIT');
     res.json({ cliente: rows[0] });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error(err);
+    res.status(500).json({ error: 'Error del servidor' });
+  } finally {
+    client.release();
+  }
+});
+
+// PATCH /api/clientes/:id/historial/:ingresoId — admin corrige una compra (auditoría obligatoria)
+router.patch('/:id/historial/:ingresoId', requireRol('admin'), async (req, res) => {
+  const { monto, fecha, nota, comentario } = req.body;
+  if (!comentario || comentario.trim().length < 3) {
+    return res.status(400).json({ error: 'El comentario es obligatorio' });
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const { rows: prev } = await client.query(
+      `SELECT * FROM historial_ingresos WHERE id = $1 AND cliente_id = $2`,
+      [req.params.ingresoId, req.params.id]
+    );
+    if (!prev.length) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Compra no encontrada' });
+    }
+    const old = prev[0];
+
+    const cambios = {};
+
+    if (monto !== undefined && monto !== null && monto !== '') {
+      const m = parseFloat(monto);
+      if (isNaN(m) || m < 0) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ error: 'Monto inválido' });
+      }
+      cambios.monto = m;
+    }
+
+    if (fecha !== undefined && fecha !== null && fecha !== '') {
+      const f = new Date(fecha);
+      if (isNaN(f.getTime())) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ error: 'Fecha inválida' });
+      }
+      // Se guarda tal cual lo escribió el admin: PostgreSQL interpreta la hora
+      // como está (evita corrimientos de zona horaria al editar y volver a leer)
+      cambios.fecha = String(fecha).trim();
+    }
+
+    if (nota !== undefined) cambios.nota = (nota || '').trim() || null;
+
+    if (Object.keys(cambios).length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'No hay cambios para guardar' });
+    }
+
+    // Auditoría campo por campo (antes / después)
+    for (const [campo, valor] of Object.entries(cambios)) {
+      const anterior = fechaTexto(old[campo]);
+      const sinCambiar = campo === 'monto'
+        ? Number(anterior) === Number(valor)
+        : campo === 'fecha'
+          ? Number(new Date(anterior)) === Number(new Date(valor))
+          : String(anterior ?? '') === String(valor ?? '');
+      if (sinCambiar) continue;
+
+      await client.query(
+        `INSERT INTO ediciones_admin (cliente_id, admin_id, campo_modificado, valor_anterior, valor_nuevo, comentario)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [req.params.id, req.user.id, `historial.${campo}`, anterior, valor, comentario.trim()]
+      );
+    }
+
+    const sets = [];
+    const values = [];
+    let idx = 1;
+    if ('monto' in cambios) { sets.push(`monto = $${idx++}`); values.push(cambios.monto); }
+    if ('fecha' in cambios) { sets.push(`fecha = $${idx++}`); values.push(cambios.fecha); }
+    if ('nota' in cambios)  { sets.push(`nota = $${idx++}`);  values.push(cambios.nota); }
+    values.push(old.id);
+
+    const { rows } = await client.query(
+      `UPDATE historial_ingresos SET ${sets.join(', ')} WHERE id = $${idx} RETURNING *`,
+      values
+    );
+    const ingreso = rows[0];
+
+    // Recalcular el acumulado con la diferencia (la compra sigue existiendo: no se toca visitas_totales)
+    const delta = Number(cambios.monto ?? old.monto) - Number(old.monto);
+    let { rows: clienteRows } = await client.query(`SELECT * FROM clientes WHERE id = $1`, [req.params.id]);
+    if (delta !== 0) {
+      ({ rows: clienteRows } = await client.query(
+        `UPDATE clientes SET monto_acumulado = GREATEST(monto_acumulado + $1, 0), actualizado_en = NOW()
+         WHERE id = $2 RETURNING *`,
+        [delta, req.params.id]
+      ));
+    }
+
+    await client.query('COMMIT');
+    res.json({ ingreso, cliente: clienteRows[0] });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error(err);
+    res.status(500).json({ error: 'Error del servidor' });
+  } finally {
+    client.release();
+  }
+});
+
+// DELETE /api/clientes/:id/historial/:ingresoId — admin elimina una compra (ej. registro duplicado)
+router.delete('/:id/historial/:ingresoId', requireRol('admin'), async (req, res) => {
+  const comentario = req.body?.comentario ?? req.query.comentario;
+  if (!comentario || String(comentario).trim().length < 3) {
+    return res.status(400).json({ error: 'El comentario es obligatorio' });
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const { rows: prev } = await client.query(
+      `SELECT * FROM historial_ingresos WHERE id = $1 AND cliente_id = $2`,
+      [req.params.ingresoId, req.params.id]
+    );
+    if (!prev.length) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Compra no encontrada' });
+    }
+    const old = prev[0];
+
+    await client.query(`DELETE FROM historial_ingresos WHERE id = $1`, [old.id]);
+
+    await client.query(
+      `INSERT INTO ediciones_admin (cliente_id, admin_id, campo_modificado, valor_anterior, valor_nuevo, comentario)
+       VALUES ($1, $2, 'historial.eliminado', $3, NULL, $4)`,
+      [
+        req.params.id,
+        req.user.id,
+        JSON.stringify({ id: old.id, monto: Number(old.monto), fecha: fechaTexto(old.fecha), nota: old.nota }),
+        String(comentario).trim()
+      ]
+    );
+
+    const { rows } = await client.query(
+      `UPDATE clientes SET monto_acumulado = GREATEST(monto_acumulado - $1, 0),
+              visitas_totales = GREATEST(visitas_totales - 1, 0), actualizado_en = NOW()
+       WHERE id = $2 RETURNING *`,
+      [old.monto, req.params.id]
+    );
+
+    await client.query('COMMIT');
+    res.json({ eliminado: { id: old.id }, cliente: rows[0] });
   } catch (err) {
     await client.query('ROLLBACK');
     console.error(err);
