@@ -21,6 +21,7 @@ CREATE TABLE clientes (
   celular VARCHAR(20),
   nacionalidad VARCHAR(30),
   departamento VARCHAR(50),
+  provincia VARCHAR(80),
   monto_acumulado DECIMAL(12,2) DEFAULT 0,
   visitas_totales INT DEFAULT 0,
   fecha_registro TIMESTAMP DEFAULT NOW(),

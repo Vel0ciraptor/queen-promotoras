@@ -167,6 +167,22 @@ export async function runMigrations() {
       } else {
         console.log('✅ Migración ubicación ya aplicada.');
       }
+
+      // Migración: provincia / localidad de las clientas (ej. Yacuiba, Villa Tunari)
+      const { rows: provinciaCol } = await client.query(`
+        SELECT EXISTS (
+          SELECT FROM information_schema.columns
+          WHERE table_schema = 'public' AND table_name = 'clientes' AND column_name = 'provincia'
+        );
+      `);
+
+      if (!provinciaCol[0]?.exists) {
+        console.log('📌 Ejecutando migración: provincia/localidad...');
+        await ejecutarArchivoMigracion(client, 'migration_provincia.sql');
+        console.log('✅ Migración provincia completada.');
+      } else {
+        console.log('✅ Migración provincia ya aplicada.');
+      }
     }
   } catch (err) {
     await client.query('ROLLBACK').catch(() => {});

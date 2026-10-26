@@ -1,7 +1,7 @@
 import express from 'express';
 import pool from '../db/pool.js';
 import { authMiddleware, requireRol } from '../middleware/auth.js';
-import { normalizarDepartamento, normalizarNacionalidad } from '../constants/ubicaciones.js';
+import { normalizarDepartamento, normalizarNacionalidad, normalizarProvincia, esDepartamento } from '../constants/ubicaciones.js';
 
 const router = express.Router();
 router.use(authMiddleware);
@@ -75,7 +75,7 @@ router.get('/', async (req, res) => {
 router.get('/export', requireRol('admin'), async (req, res) => {
   try {
     const { rows } = await pool.query(
-      `SELECT c.id, c.nombre_completo, c.carnet_identidad, c.celular, c.nacionalidad, c.departamento, c.monto_acumulado, c.visitas_totales, c.fecha_registro,
+      `SELECT c.id, c.nombre_completo, c.carnet_identidad, c.celular, c.nacionalidad, c.departamento, c.provincia, c.monto_acumulado, c.visitas_totales, c.fecha_registro,
               u.nombre AS creado_por_nombre
        FROM clientes c
        LEFT JOIN usuarios u ON c.creado_por = u.id
@@ -184,8 +184,22 @@ router.post('/import', requireRol('admin'), async (req, res) => {
         'nacionalidad', 'nacionalidad de la clienta', 'nacion', 'nación', 'pais', 'país'
       );
       const departamento = findVal(row,
-        'departamento', 'departamento de origen', 'depto', 'departamento donde viene', 'provincia'
+        'departamento', 'departamento de origen', 'depto', 'departamento donde viene'
       );
+      // Provincia/localidad (Yacuiba, Villa Tunari, Camiri...). Nota: antes la
+      // columna "provincia" del Excel se interpretaba como departamento; si el
+      // valor es en realidad un departamento (ej. "Santa Cruz") y no hay columna
+      // de departamento, se guarda como departamento para no perder datos.
+      let provincia = findVal(row,
+        'provincia', 'ciudad', 'localidad', 'municipio', 'provincia o localidad', 'provincia/localidad'
+      );
+      let depFinal = departamento;
+      if (provincia && !depFinal) {
+        if (esDepartamento(provincia)) {
+          depFinal = normalizarDepartamento(provincia);
+          provincia = null;
+        }
+      }
       const montoCompra = parseFloat(findVal(row, 'monto', 'monto de compra', 'montodecompra', 'monto_compra', 'total', 'compra') || 0) || 0;
       const vecesCompradas = parseInt(findVal(row, 'veces que compro', 'vecesquecompro', 'veces_compradas', 'veces compradas', 'visitas', 'compras', 'totalcompras') || 0) || 0;
       const fechaRegistro = findVal(row, 'fecha de registro', 'fechaderegistro', 'fecha_registro', 'fecha', 'fechacompra', 'fecha de compra');
@@ -198,9 +212,9 @@ router.post('/import', requireRol('admin'), async (req, res) => {
 
       try {
         const { rows } = await client.query(
-          `INSERT INTO clientes (nombre_completo, carnet_identidad, celular, nacionalidad, departamento, monto_acumulado, visitas_totales, fecha_registro, creado_por)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, COALESCE($8, NOW()), $9) RETURNING *`,
-          [nombre, ci, telefono, normalizarNacionalidad(nacionalidad), normalizarDepartamento(departamento), montoCompra, vecesCompradas, fechaISO, req.user.id]
+          `INSERT INTO clientes (nombre_completo, carnet_identidad, celular, nacionalidad, departamento, provincia, monto_acumulado, visitas_totales, fecha_registro, creado_por)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, COALESCE($9, NOW()), $10) RETURNING *`,
+          [nombre, ci, telefono, normalizarNacionalidad(nacionalidad), normalizarDepartamento(depFinal), normalizarProvincia(provincia, depFinal), montoCompra, vecesCompradas, fechaISO, req.user.id]
         );
 
         const cliente = rows[0];
@@ -239,7 +253,7 @@ router.post('/import', requireRol('admin'), async (req, res) => {
 
 // POST /api/clientes
 router.post('/', async (req, res) => {
-  const { nombre_completo, carnet_identidad, celular, nacionalidad, departamento, monto_inicial = 0 } = req.body;
+  const { nombre_completo, carnet_identidad, celular, nacionalidad, departamento, provincia, monto_inicial = 0 } = req.body;
   if (!nombre_completo) return res.status(400).json({ error: 'Nombre requerido' });
 
   const client = await pool.connect();
@@ -247,14 +261,15 @@ router.post('/', async (req, res) => {
     await client.query('BEGIN');
 
     const { rows } = await client.query(
-      `INSERT INTO clientes (nombre_completo, carnet_identidad, celular, nacionalidad, departamento, monto_acumulado, visitas_totales, creado_por)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+      `INSERT INTO clientes (nombre_completo, carnet_identidad, celular, nacionalidad, departamento, provincia, monto_acumulado, visitas_totales, creado_por)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
       [
         nombre_completo,
         carnet_identidad || null,
         celular || null,
         normalizarNacionalidad(nacionalidad),
         normalizarDepartamento(departamento),
+        normalizarProvincia(provincia, departamento),
         monto_inicial,
         monto_inicial > 0 ? 1 : 0,
         req.user.id
@@ -345,13 +360,14 @@ router.post('/:id/ingreso', async (req, res) => {
 
 // PUT /api/clientes/:id — solo admin, requiere comentario
 router.put('/:id', requireRol('admin'), async (req, res) => {
-  const { nombre_completo, carnet_identidad, celular, nacionalidad, departamento, comentario } = req.body;
+  const { nombre_completo, carnet_identidad, celular, nacionalidad, departamento, provincia, comentario } = req.body;
   if (!comentario || comentario.trim().length < 3) {
     return res.status(400).json({ error: 'El comentario es obligatorio para editar' });
   }
 
   const nac = nacionalidad === undefined ? undefined : normalizarNacionalidad(nacionalidad);
   const dep = departamento === undefined ? undefined : normalizarDepartamento(departamento);
+  const prov = provincia === undefined ? undefined : normalizarProvincia(provincia, departamento);
 
   const client = await pool.connect();
   try {
@@ -361,7 +377,7 @@ router.put('/:id', requireRol('admin'), async (req, res) => {
     if (!prev.length) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'No encontrado' }); }
     const old = prev[0];
 
-    const campos = { nombre_completo, carnet_identidad, celular, nacionalidad: nac, departamento: dep };
+    const campos = { nombre_completo, carnet_identidad, celular, nacionalidad: nac, departamento: dep, provincia: prov };
     for (const [campo, valor] of Object.entries(campos)) {
       if (valor !== undefined && (valor || null) !== (old[campo] || null)) {
         await client.query(
@@ -379,14 +395,16 @@ router.put('/:id', requireRol('admin'), async (req, res) => {
         celular           = CASE WHEN $5::boolean  THEN $6 ELSE celular END,
         nacionalidad      = CASE WHEN $7::boolean  THEN $8 ELSE nacionalidad END,
         departamento      = CASE WHEN $9::boolean  THEN $10 ELSE departamento END,
+        provincia         = CASE WHEN $11::boolean THEN $12 ELSE provincia END,
         actualizado_en = NOW()
-       WHERE id = $11 RETURNING *`,
+       WHERE id = $13 RETURNING *`,
       [
         nombre_completo !== undefined, nombre_completo || null,
         carnet_identidad !== undefined, carnet_identidad || null,
         celular !== undefined, celular || null,
         nacionalidad !== undefined, nac,
         departamento !== undefined, dep,
+        provincia !== undefined, prov,
         req.params.id
       ]
     );

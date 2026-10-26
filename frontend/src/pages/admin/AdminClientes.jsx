@@ -5,7 +5,7 @@ import api from '../../lib/api';
 import { useToast } from '../../context/ToastContext';
 import ImportarExcelModal from '../../components/ImportarExcelModal';
 import ClienteDetalleModal from '../../components/ClienteDetalleModal';
-import { DEPARTAMENTOS, NACIONALIDADES } from '../../lib/ubicaciones';
+import { DEPARTAMENTOS, NACIONALIDADES, provinciasDe, OTRA_PROVINCIA } from '../../lib/ubicaciones';
 
 const fmt = n => new Intl.NumberFormat('es-BO', { style: 'currency', currency: 'BOB', minimumFractionDigits: 0 }).format(n || 0);
 const fmtDate = d => new Date(d).toLocaleDateString('es-BO', { day: '2-digit', month: 'short', year: 'numeric' });
@@ -15,6 +15,9 @@ function EditarClienteModal({ cliente, onClose, onGuardado }) {
   // Si el valor guardado no está en la lista (país escrito a mano), marcamos "Otra"
   const nacGuardada = cliente.nacionalidad || '';
   const esOtroPais = nacGuardada !== '' && nacGuardada !== 'Otra' && !NACIONALIDADES.includes(nacGuardada);
+  // Ídem para la provincia/localidad guardada
+  const provGuardada = cliente.provincia || '';
+  const esOtraProvincia = provGuardada !== '' && !provinciasDe(cliente.departamento || '').includes(provGuardada);
   const [form, setForm] = useState({
     nombre_completo: cliente.nombre_completo,
     carnet_identidad: cliente.carnet_identidad || '',
@@ -22,9 +25,24 @@ function EditarClienteModal({ cliente, onClose, onGuardado }) {
     nacionalidad: esOtroPais ? 'Otra' : nacGuardada,
     otroPais: esOtroPais ? nacGuardada : '',
     departamento: cliente.departamento || '',
+    provincia: esOtraProvincia ? OTRA_PROVINCIA : provGuardada,
+    otraProvincia: esOtraProvincia ? provGuardada : '',
     comentario: ''
   });
   const [loading, setLoading] = useState(false);
+
+  const provincias = provinciasDe(form.departamento);
+  const escribiendoOtraProvincia = form.provincia === OTRA_PROVINCIA;
+
+  // Al cambiar el departamento, la provincia se conserva solo si sigue válida
+  const changeDepartamento = e => {
+    const nuevo = e.target.value;
+    setForm(f => {
+      if (f.provincia === OTRA_PROVINCIA) return { ...f, departamento: nuevo };
+      if (f.provincia && provinciasDe(nuevo).includes(f.provincia)) return { ...f, departamento: nuevo };
+      return { ...f, departamento: nuevo, provincia: '', otraProvincia: '' };
+    });
+  };
 
   const handleSubmit = async e => {
     e.preventDefault();
@@ -35,7 +53,8 @@ function EditarClienteModal({ cliente, onClose, onGuardado }) {
         ...form,
         nacionalidad: form.nacionalidad === 'Otra'
           ? (form.otroPais.trim() || 'Otra')
-          : form.nacionalidad
+          : form.nacionalidad,
+        provincia: escribiendoOtraProvincia ? form.otraProvincia.trim() : form.provincia
       });
       onGuardado(data.cliente);
       toast.success('Cliente actualizada');
@@ -80,12 +99,25 @@ function EditarClienteModal({ cliente, onClose, onGuardado }) {
             </div>
             <div className="form-group">
               <label className="form-label">Departamento</label>
-              <select className="input" value={form.departamento} onChange={e => setForm(f=>({...f,departamento:e.target.value}))}>
+              <select className="input" value={form.departamento} onChange={changeDepartamento}>
                 <option value="">Sin especificar</option>
                 {DEPARTAMENTOS.map(d => <option key={d} value={d}>{d}</option>)}
               </select>
             </div>
           </div>
+          <div className="form-group">
+            <label className="form-label">Provincia / Localidad</label>
+            <select className="input" value={form.provincia} onChange={e => setForm(f=>({...f,provincia:e.target.value}))} disabled={!form.departamento}>
+              <option value="">{form.departamento ? 'Sin especificar' : 'Elige un departamento primero'}</option>
+              {provincias.map(p => <option key={p} value={p}>{p}</option>)}
+              <option value={OTRA_PROVINCIA}>Otra localidad…</option>
+            </select>
+          </div>
+          {escribiendoOtraProvincia && (
+            <div className="form-group">
+              <input className="input" placeholder="Escribe la localidad (ej: Villamontes, Puertas del Sur...)" maxLength={80} value={form.otraProvincia} onChange={e => setForm(f=>({...f,otraProvincia:e.target.value}))} />
+            </div>
+          )}
           {form.nacionalidad === 'Otra' && (
             <div className="form-group">
               <label className="form-label">¿De qué país viene la compra? (opcional)</label>
@@ -329,6 +361,7 @@ export default function AdminClientes() {
         'Celular': c.celular || 'N/A',
         'Nacionalidad': c.nacionalidad || 'N/A',
         'Departamento': c.departamento || 'N/A',
+        'Provincia': c.provincia || 'N/A',
         'Monto Acumulado (Bs)': parseFloat(c.monto_acumulado || 0),
         'Visitas Totales': c.visitas_totales || 0,
         'Fecha Registro': new Date(c.fecha_registro).toLocaleString('es-BO'),
@@ -512,7 +545,7 @@ export default function AdminClientes() {
                       <MapPin size={12} /> Origen
                     </div>
                     <div style={{ fontWeight:700, fontSize:'0.85rem', marginTop:'0.1rem' }}>
-                      {[c.departamento, c.nacionalidad].filter(Boolean).join(' · ') || '—'}
+                      {[c.provincia, c.departamento, c.nacionalidad].filter(Boolean).join(' · ') || '—'}
                     </div>
                   </div>
                 </div>
@@ -563,7 +596,7 @@ export default function AdminClientes() {
                     <td style={{ color:'var(--text-muted)', whiteSpace:'nowrap' }}>{c.carnet_identidad || '—'}</td>
                     <td style={{ color:'var(--text-muted)', whiteSpace:'nowrap' }}>{c.celular || '—'}</td>
                     <td className="table-hide-md" style={{ color:'var(--text-muted)', fontSize:'0.8rem' }}>
-                      {[c.departamento, c.nacionalidad].filter(Boolean).join(' · ') || '—'}
+                      {[c.provincia, c.departamento, c.nacionalidad].filter(Boolean).join(' · ') || '—'}
                     </td>
                     <td className="td-num" style={{ fontWeight:800, color:'var(--pink-strong)', cursor:'pointer' }} onClick={() => setEditandoMonto(c)} title="Ajustar monto">
                       {fmt(c.monto_acumulado)}

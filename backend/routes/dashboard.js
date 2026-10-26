@@ -217,13 +217,13 @@ router.get('/top-clientes', async (req, res) => {
   const limit = Math.min(Math.max(parseInt(req.query.limit) || 10, 1), 50);
   try {
     const { rows } = await pool.query(
-      `SELECT c.id, c.nombre_completo, c.departamento,
+      `SELECT c.id, c.nombre_completo, c.departamento, c.provincia,
               COALESCE(SUM(h.monto), 0) AS total,
               COUNT(h.id) AS compras,
               MAX(h.fecha) AS ultima_compra
        FROM historial_ingresos h
        JOIN clientes c ON c.id = h.cliente_id
-       GROUP BY c.id, c.nombre_completo, c.departamento
+       GROUP BY c.id, c.nombre_completo, c.departamento, c.provincia
        ORDER BY total DESC, compras DESC
        LIMIT $1`,
       [limit]

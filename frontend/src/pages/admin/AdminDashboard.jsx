@@ -211,6 +211,7 @@ export default function AdminDashboard() {
                       {c.nombre_completo}
                     </div>
                     <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                      {(c.provincia || c.departamento) && <span>📍 {[c.provincia, c.departamento].filter(Boolean).join(' · ')} · </span>}
                       {num(c.compras)} compras · última: {fmtFecha(c.ultima_compra)}
                     </div>
                   </div>

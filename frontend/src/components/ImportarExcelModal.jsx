@@ -106,8 +106,8 @@ export default function ImportarExcelModal({ onClose, onImportado }) {
             <div style={{ marginTop: '1.5rem', textAlign: 'left', fontSize: '0.8rem', color: 'var(--text-muted)', background: 'var(--surface)', borderRadius: '0.75rem', padding: '1rem' }}>
               <p style={{ fontWeight: 700, marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>Columnas esperadas:</p>
               <p>Nombre, Ci, Teléfono, Monto, Veces que compro</p>
-              <p style={{ marginTop: '0.35rem' }}>Opcionales: Nacionalidad, Departamento</p>
-              <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>También acepta: C.I, C.I., Carnet, Telefono (sin tilde), Celular, Monto de Compra, VECES COMPRADAS, País, Depto</p>
+              <p style={{ marginTop: '0.35rem' }}>Opcionales: Nacionalidad, Departamento, Provincia / Ciudad</p>
+              <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>También acepta: C.I, C.I., Carnet, Telefono (sin tilde), Celular, Monto de Compra, VECES COMPRADAS, País, Depto, Localidad, Municipio</p>
             </div>
           </div>
         )}
@@ -125,8 +125,8 @@ export default function ImportarExcelModal({ onClose, onImportado }) {
               {detectedCols.map(col => (
                 <span key={col} style={{
                   fontSize: '0.7rem', padding: '0.15rem 0.5rem', borderRadius: '0.5rem',
-                  background: ['Nombre','Ci','Teléfono','Monto','Veces que compro','Nacionalidad','Departamento'].includes(col) ? '#D1FAE5' : '#FEF3C7',
-                  color: ['Nombre','Ci','Teléfono','Monto','Veces que compro','Nacionalidad','Departamento'].includes(col) ? '#065F46' : '#92400E',
+                  background: ['Nombre','Ci','Teléfono','Monto','Veces que compro','Nacionalidad','Departamento','Provincia','Ciudad','Localidad','Municipio'].includes(col) ? '#D1FAE5' : '#FEF3C7',
+                  color: ['Nombre','Ci','Teléfono','Monto','Veces que compro','Nacionalidad','Departamento','Provincia','Ciudad','Localidad','Municipio'].includes(col) ? '#065F46' : '#92400E',
                   fontWeight: 600
                 }}>{col}</span>
               ))}

@@ -256,7 +256,7 @@ export default function ClienteDetalleModal({ cliente: initialCliente, onClose, 
             </div>
             <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
               {cliente.celular && <span>📱 {cliente.celular} · </span>}
-              {cliente.departamento && <span>📍 {cliente.departamento} · </span>}
+              {(cliente.provincia || cliente.departamento) && <span>📍 {[cliente.provincia, cliente.departamento].filter(Boolean).join(' · ')} · </span>}
               {cliente.nacionalidad && <span>🌎 {cliente.nacionalidad} · </span>}
               <span>Desde {fmtDate(cliente.fecha_registro)}</span>
             </div>
